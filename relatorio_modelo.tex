@@ -1,0 +1,217 @@
+\documentclass[12pt, a4paper, twoside]{article}
+\usepackage[left = 3cm, top = 3cm, right = 2cm, bottom = 2cm]{geometry}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amsfonts, amssymb}
+\numberwithin{equation}{subsection} %subsection
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{colortbl}
+\usepackage{titletoc,titlesec}
+\usepackage{setspace}
+\usepackage{indentfirst}
+%\usepackage{natbib}
+\usepackage[colorlinks=true, allcolors=black]{hyperref}
+%\usepackage[brazilian,hyperpageref]{backref}
+\usepackage[alf]{abntex2cite}
+\usepackage{multirow} % https://www.ctan.org/pkg/multirow
+\usepackage{float} % https://www.ctan.org/pkg/float
+\usepackage{booktabs} % https://www.ctan.org/pkg/booktabs
+\usepackage{enumitem} % https://www.ctan.org/pkg/enumitem
+\usepackage{quoting} % https://www.ctan.org/pkg/quoting
+\usepackage{epigraph}
+\usepackage{subfigure}
+\usepackage{anyfontsize}
+\usepackage{caption}
+\usepackage{adjustbox}
+\usepackage{bm}
+\usepackage{scalefnt}
+
+%\usepackage[style=abnt]{biblatex}
+%\bibliographystyle{plainnat}
+\raggedbottom % https://latexref.xyz/_005craggedbottom.html
+
+\newtheorem{teo}{Teorema}[section]
+\newtheorem{lema}[teo]{Lema}
+\newtheorem{cor}[teo]{Corolário}
+\newtheorem{prop}[teo]{Proposição}
+\newtheorem{defi}{Definição}
+\newtheorem{exem}{Exemplo}
+
+\newcommand{\titulo}{\large Título do relatório}
+\newcommand{\autor}{Nome completo do autor (a)}
+\newcommand{\orientador}{ }
+%\newcommand{\coorientador}{ Prof(a). }
+\newcommand{\mat}[1]{\mathbf{#1}}
+
+\pagestyle{fancy}
+\fancyhf{}
+%\renewcommand{\headrulewidth}{0pt}
+\setlength{\headheight}{16pt}
+%C - Centro, L - Esquerda, R - Direita, O - impar, E - par
+\fancyhead[RO, LE]{\thepage}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+
+\titlecontents{section}[0cm]{}{\bf\thecontentslabel\ }{}{\titlerule*[.75pc]{.}\contentspage}
+\titlecontents{subsection}[0.75cm]{}{\thecontentslabel\ }{}{\titlerule*[.75pc]{.}\contentspage}
+
+\setcounter{secnumdepth}{3}
+%\setcounter{tocdepth}{3}
+
+\DeclareCaptionFormat{myformat}{ \centering \fontsize{10}{12}\selectfont#1#2#3}
+\captionsetup{format=myformat}
+
+\begin{document}
+
+
+\include{capa}
+
+%\include{rosto}
+
+\pagenumbering{arabic}
+\setcounter{page}{2}
+\onehalfspacing
+
+
+
+
+\setlength{\parindent}{1.5cm}
+\setlength{\parskip}{0.2cm}
+\setlength{\intextsep}{0.5cm}
+
+\titlespacing*{\section}{0cm}{0cm}{0.5cm}
+\titlespacing*{\subsection}{0cm}{0.5cm}{0.5cm}
+\titlespacing*{\subsubsection}{0cm}{0.5cm}{0.5cm}
+\titlespacing*{\paragraph}{0cm}{0.5cm}{0.5cm}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+%\titlespacing*{\paragraph}
+%{0pt}{3.25ex plus ex minus .2ex}{1.5ex plus .2ex}
+
+
+
+\pagenumbering{arabic}
+\setcounter{page}{3}
+
+\fancyhead[RE, LO]{\nouppercase{\emph\leftmark}}
+%\fancyfoot[C]{Departamento de Estatística}
+
+%Sumário
+\tableofcontents
+
+\newpage
+
+\section{\textbf{Introdução}}\label{Sec1}
+Aqui deve ser inserido a introdução para o relatório ...
+
+A análise estatística apresentada neste relatório refere-se a...
+
+
+
+\section{Título da seção}\label{Sec2}
+
+Texto texto texto...
+
+Por exemplo, esta seção pode ser utilizada para apresentar a análise descritiva dos dados.
+
+\subsection{Título da subseção}
+
+Texto texto texto... \\
+
+aaaa...\\
+
+{ \bf Exemplo de inserção de expressão matemática:}
+
+O modelo de regressão linear simples (MRLS) é definido por
+\begin{eqnarray*}
+Y_i = \beta_0 + \beta_1x_i + \varepsilon_i, \ \ i=1, \ldots, n,
+\end{eqnarray*}
+em que  ...
+
+%Ou ainda,
+%$$Y_i = \beta_0 + \beta_1x_i + \varepsilon_i, \ \ i=1, \ldots, n,$$
+
+
+A Tabela \ref{tab1} apresenta as estimativas, erros-padrão, estatísticas-$t$  e $p$-valores do teste  da nulidade dos coeficientes da regressão. A partir destes resultados, nota-se que ...
+%Modelo de tabela:
+\begin{table}[!htb]
+	\centering
+	\caption{Estimativas, erros padrão,  estatistica $t$ e $p$-valor sob os MRLS ajustados -- Dados nome.}\vspace{0.2cm}
+	\label{tab1}
+	\scalefont{0.80}
+	\def\arraystretch{1} \begin{tabular}{rrrrrrrrrr}\hline
+& \multicolumn{4}{c}{Modelo 1 }                                   && \multicolumn{4}{c}{Modelo 2 } \\  \cmidrule{2-5}\cmidrule{7-10}
+& Estimativa   &Erro padrão &$t$   &$p$-valor                       && Estimativa  & Erro padrão &$t$   &$p$-valor     \\ \cmidrule{2-5}\cmidrule{7-10}
+		{\it parâmetro}&&&&&&&&\\
+		$\beta_0$        & $9.399$  &  $0.244$  & $38.423$  &  $<0.001$                       && $ 11.091$  &  $0.288$  & $38.482$ & $<0.001$      \\
+		$\beta_1$        &  $0.255$  &  $0.010$  &  $25.239$   &  $<0.001$                       &&  $0.331$  &  $0.011$  &  $29.516$  &  $<0.001$ \\
+  \cmidrule{2-5}\cmidrule{7-10}\\\hline
+& \multicolumn{4}{c}{Modelo 3 }                                   && \multicolumn{4}{c}{Modelo 4 } \\  \cmidrule{2-5}\cmidrule{7-10}
+& Estimativa   &Erro padrão &$t$   &$p$-valor                       && Estimativa  & Erro padrão &$t$   &$p$-valor     \\ \cmidrule{2-5}\cmidrule{7-10}
+		{\it parâmetro}&&&&&&&&\\
+		$\beta_0$        & $9.399$  &  $0.244$  & $38.423$  &  $<0.001$                       && $ 11.091$  &  $0.288$  & $38.482$ & $<0.001$      \\
+		$\beta_1$        &  $0.255$  &  $0.010$  &  $25.239$   &  $<0.001$                       &&  $0.331$  &  $0.011$  &  $29.516$  &  $<0.001$ \\\hline
+ \end{tabular}
+\end{table}
+
+
+
+\section{Título da seção}\label{Sec3}
+
+Texto texto texto...
+
+Forma de referenciar uma seção anterior:
+
+Como discutido na Seção \ref{Sec3} ... \\
+
+\subsection{Título da subseção}
+
+Texto texto texto...
+
+A Figura \ref{ENVELOPES1}  apresenta gráficos de probabilidade normal dos resíduos studentizados com envelopes simulados para cada modelo de regressão linear ajustado. A partir desta figura observa-se que...
+%Modelo de figura acomodada em blocos:
+\begin{figure}[!htb]
+	\centering
+	\subfigure[Modelo 1]{\includegraphics[width=6cm,height=5.5cm]{imagens/GPN1_ES.jpeg}}
+	\qquad
+	\subfigure[Modelo 2]{\includegraphics[width=6.0cm,height=5.5cm]{imagens/GPN2_ES.jpeg}}
+    \qquad
+	\subfigure[Modelo 3]{\includegraphics[width=6.0cm,height=5.5cm]{imagens/GPN1_ES.jpeg}}
+    \qquad
+	\subfigure[Modelo 4]{\includegraphics[width=6.0cm,height=5.5cm]{imagens/GPN1_ES.jpeg}}
+	\caption{Gráficos de probabilidade normal dos resíduos studentizados com envelopes simulados sob os MRLS ajustados - Dados nome. }
+	\label{ENVELOPES1}
+\end{figure}
+
+\section{Título da seção}\label{Sec4}
+
+Texto texto...\\
+
+Formas de referenciar materiais:
+
+Segundo \citeonline{charnet} ...
+
+Os modelos de regressão linear \cite{montgomery2012} são um conjunto de técnicas ...
+
+Texto texto texto...
+
+\subsection{Título da subseção}
+
+Texto texto texto...
+
+\subsection{Título da subseção}
+
+Texto texto texto...
+
+\section{Conclusões}
+
+Aqui deve ser inserido a conclusão para o relatório ...\\
+
+
+Neste relatório foi discutido...
+
+\bibliography{ref.bib} %caso tenha referências a serem citadas
+
+
+\end{document}
