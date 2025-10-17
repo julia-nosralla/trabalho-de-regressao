@@ -68,7 +68,7 @@ meu_tema = theme_minimal() +
     # Histograma
     ggplot(wine) +
       aes(x = claridade) +
-      geom_histogram(colour = "white", fill = "#1F77B4") +
+      geom_histogram(colour = "white", fill = "#51A5C5") +
       labs(
         x = "Claridade", 
         y = "Frequência Absoluta",
@@ -80,7 +80,7 @@ meu_tema = theme_minimal() +
     # Boxplot
     ggplot(wine) +
       aes(x = factor(""), y = claridade) +
-      geom_boxplot(fill = "#1F77B4", width = 0.3) + 
+      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
       guides(fill = FALSE) +
       stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
       labs(
@@ -95,7 +95,7 @@ meu_tema = theme_minimal() +
     #dipersao
     ggplot(wine, aes(x = claridade, y = qualidade)) +
       geom_point(shape = 16, size = 2) +                     
-      geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+      geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
       labs(
         x = "Claridade",
         y = "Qualidade"
@@ -115,7 +115,7 @@ meu_tema = theme_minimal() +
     # Histograma
     ggplot(wine) +
       aes(x = aroma) +
-      geom_histogram(colour = "white", fill = "#1F77B4", binwidth = 1) +
+      geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
       labs(
         x = "Aroma", 
         y = "Frequência Absoluta",
@@ -127,7 +127,7 @@ meu_tema = theme_minimal() +
     # Boxplot
     ggplot(wine) +
       aes(x = factor(""), y = aroma) +
-      geom_boxplot(fill = "#1F77B4", width = 0.3) + 
+      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
       guides(fill = FALSE) +
       stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
       labs(
@@ -141,7 +141,7 @@ meu_tema = theme_minimal() +
     
     ggplot(wine, aes(x = aroma, y = qualidade)) +
       geom_point(shape = 16, size = 2) +                     
-      geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+      geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
       labs(
         x = "Aroma",
         y = "Qualidade"
@@ -160,7 +160,7 @@ meu_tema = theme_minimal() +
     # Histograma
     ggplot(wine) +
       aes(x = corpo) +
-      geom_histogram(colour = "white", fill = "#1F77B4", binwidth = 1) +
+      geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
       labs(
         x = "Corpo", 
         y = "Frequência Absoluta",
@@ -172,7 +172,7 @@ meu_tema = theme_minimal() +
     # Boxplot
     ggplot(wine) +
       aes(x = factor(""), y = corpo) +
-      geom_boxplot(fill = "#1F77B4", width = 0.3) + 
+      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
       guides(fill = FALSE) +
       stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
       labs(
@@ -186,7 +186,7 @@ meu_tema = theme_minimal() +
     
     ggplot(wine, aes(x = corpo, y = qualidade)) +
       geom_point(shape = 16, size = 2) +                     
-      geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+      geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
       labs(
         x = "Corpo",
         y = "Qualidade"
@@ -204,7 +204,7 @@ meu_tema = theme_minimal() +
     # Histograma
     ggplot(wine) +
       aes(x = sabor) +
-      geom_histogram(colour = "white", fill = "#1F77B4", binwidth = 1) +
+      geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
       labs(
         x = "Sabor", 
         y = "Frequência Absoluta",
@@ -216,7 +216,7 @@ meu_tema = theme_minimal() +
     # Boxplot
     ggplot(wine) +
       aes(x = factor(""), y = sabor) +
-      geom_boxplot(fill = "#1F77B4", width = 0.3) + 
+      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
       guides(fill = FALSE) +
       stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
       labs(
@@ -230,7 +230,7 @@ meu_tema = theme_minimal() +
     
     ggplot(wine, aes(x = sabor, y = qualidade)) +
       geom_point(shape = 16, size = 2) +                     
-      geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+      geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
       labs(
         x = "Sabor",
         y = "Qualidade"
@@ -247,7 +247,7 @@ meu_tema = theme_minimal() +
     # Histograma
     ggplot(wine) +
       aes(x = aromac) +
-      geom_histogram(colour = "white", fill = "#1F77B4", binwidth = 1) +
+      geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
       labs(
         x = "Aroma do Tonel de Carvalho", 
         y = "Frequência Absoluta",
@@ -259,7 +259,7 @@ meu_tema = theme_minimal() +
     # Boxplot
     ggplot(wine) +
       aes(x = factor(""), y = aromac) +
-      geom_boxplot(fill = "#1F77B4", width = 0.3) + 
+      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
       guides(fill = FALSE) +
       stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
       labs(
@@ -273,7 +273,7 @@ meu_tema = theme_minimal() +
     
     ggplot(wine, aes(x = aromac, y = qualidade)) +
       geom_point(shape = 16, size = 2) +                     
-      geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+      geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
       labs(
         x = "Aroma do Tonel de Carvalho",
         y = "Qualidade"
@@ -286,14 +286,30 @@ meu_tema = theme_minimal() +
     
     
 # qualidade --------------------------------------------------------------------
+summary(wine$qualidade)
+cat("Desvio padrão:", sd(wine$qualidade, na.rm = TRUE), "\n")
+cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
+    
+    # Histograma
+    ggplot(wine) +
+      aes(x = qualidade) +
+      geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
+      labs(
+        x = "Qualidade", 
+        y = "Frequência Absoluta",
+        title = "Histograma da variável qualidade"
+      ) +
+      theme_estat()+
+      theme(plot.title = element_text(hjust = 0.5))
+    
     ggplot(wine) +
       aes(x = factor(""), y = qualidade) +
-      geom_boxplot(fill = "#1F77B4", width = 0.3) + 
+      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
       guides(fill = FALSE) +
       stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
       labs(
         x = "", 
-        y = "Aroma"
+        y = "Qualidade"
       ) +
       theme_estat() +
       theme(plot.title = element_text(hjust = 0.5))
