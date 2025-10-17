@@ -1,0 +1,1857 @@
+---
+title: ""
+execute: 
+  echo: false
+  warning: false
+lang: pt
+format:
+  pdf:
+    geometry: 
+      - left=3cm 
+      - right=2cm 
+      - top=3cm 
+      - bottom=2cm
+    classoption: a4paper
+    mainfont: Arial 
+    toc: false
+    number-sections: true
+    
+    include-in-header:
+      - text: |
+          \RequirePackage{graphicx}
+      - file: Estilo.tex
+      
+    linkcolor: black 
+    filecolor: black
+    citecolor: black
+    urlcolor: black 
+    
+    fig-width: 6.2
+    fig-height: 3.66
+
+pdf-engine: lualatex
+pdf-engine-opts:
+  - '--no-shell-escape'
+  - '--halt-on-error'    
+    
+
+highlight-style: tango
+
+
+
+
+crossref: 
+  fig-title: Figura
+  fig-prefix: ""
+  tbl-title: Tabela
+  tbl-prefix: ""
+  title-delim: ":"
+---
+
+
+\begin{titlepage}
+\begin{center}
+{\large Departamento de Estatística - EST} \\
+\vspace{0.5cm}
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=9cm, keepaspectratio]{unb_logo.jpeg}
+\end{figure}
+\vskip 17em
+{\LARGE \textbf{Lista Prática 1}} \\
+\vskip 1em
+{\Large Arthur Gonçalves de Souza - 221022794} \\
+\vskip 15em
+{\Large Análise de Regressão Linear} \\
+\vskip 1em
+{\Large Profa. Terezinha Ribeiro} \\
+\vspace{5cm}
+{\Large Brasília} \\
+\vskip 1em
+{\Large 2025} \\
+\end{center}
+\end{titlepage}
+
+\pagenumbering{gobble}
+ 
+\thispagestyle{plain} 
+\mbox{}
+ 
+\hypersetup{linkcolor=black} 
+\renewcommand{\contentsname}{Sumário}
+\setcounter{tocdepth}{3}
+\tableofcontents
+ 
+ 
+\newpage
+\pagenumbering{arabic}
+
+# Introdução
+
+Este relatório possui como objetivo resolver dois problemas envolvendo análise de regressão linear simples. O **Problema 1** envolve dados referentes à um estudo de intervenções de tomografia computadorizada (fluoroscopia) no abdômen, no qual foram coletadas 19 observações, e a análise nesse caso possui como objetivo o ajuste do melhor modelo de regressão linear simples possível para explicar a Dose total de radiação recebida, com base na variável explicativa Tempo total do procedimento.
+
+Por sua vez, o **Problema 2** envolve dados referentes à 27 imóveis, e nesse caso, o principal interesse da análise é ajustar o melhor modelo de regressão linear possível para explicar o preço de venda (em US\$ 100) desses imóveis, podendo utilizar variáveis explicativas como imposto do imóvel (em US$ 100), área do terreno (em 1000 pés quadrados), área construída (em 1000 pés quadrados), e idade da residência (em anos).
+
+\newpage
+# Análises
+
+## Modelo de Regressão para ajuste da dose total de radiação recebida
+
+```{r}
+library(pacman)
+p_load(GLMsData, car, ggplot2, MASS, lmtest, dplyr, kableExtra, patchwork, moments, lmtest)
+data("fluoro")
+attach(fluoro)
+Tempo = Time
+options(scipen = 10)
+source("envelope.R")
+```
+
+
+```{r}
+calcula_resumo <- function(dados, variaveis) {
+  # Filtra apenas as variáveis desejadas
+  dados_selecionados <- dados[, variaveis, drop = FALSE]
+  
+  # Aplica as medidas resumo
+  resumo <- lapply(dados_selecionados, function(x) {
+    if (is.numeric(x)) {
+      c(
+        Média = mean(x, na.rm = TRUE),
+        Desvio_Padrão  = sd(x, na.rm = TRUE),
+        Min = min(x, na.rm = TRUE),
+        "1º Quartil" = quantile(x, probs = 0.25, na.rm = TRUE, names = F),
+        Mediana = median(x, na.rm = TRUE),
+        "3º Quartil" = quantile(x, probs = 0.75, na.rm = TRUE, names = F),
+        Máximo = max(x, na.rm = TRUE),
+        "Coef. de variação" = sd(x, na.rm = TRUE)/mean(x, na.rm = TRUE)
+      )
+    } else {
+      NA  # Para variáveis não numéricas
+    }
+  })
+  
+  # Converte a lista em data frame para facilitar a visualização
+  resumo_df <- do.call(rbind, resumo)
+  
+  # Arredonda para duas casas decimais
+  resumo_df <- round(resumo_df, 2)
+  
+  # Substitui pontos por vírgulas
+  resumo_df <- as.data.frame(apply(resumo_df, 2, function(x) gsub("\\.", ",", x)))
+  colnames(resumo_df)[2] <- "Desvio Padrão"
+  
+  # Adiciona nomes das variáveis às colunas após a transposição
+  resumo_df <- as.data.frame(t(resumo_df))
+  colnames(resumo_df) <- colnames(dados_selecionados)
+  
+  # Adiciona uma coluna com os nomes das medidas
+  resumo_df <- cbind(Medida = rownames(resumo_df), resumo_df)
+  rownames(resumo_df) <- NULL
+  
+  # Retorna o resultado
+  return(resumo_df)
+}
+
+# Função boxcox
+bx <- function(x, l){
+  ((x^l) - 1)/l
+}
+
+# Função para sumarizar o modelo linear
+resumo_lm_df <- function(modelo) {
+  # Extrai coeficientes e medidas de ajuste
+  coeficientes <- summary(modelo)$coefficients
+  rownames(coeficientes)[1] <- "Intercepto"
+  r2 <- summary(modelo)$r.squared
+  r2_ajustado <- summary(modelo)$adj.r.squared
+  
+  # Cria o data frame de coeficientes
+  tabela_coef <- data.frame(
+    Coeficientes = rownames(coeficientes),
+    Estimativa = round(coeficientes[, "Estimate"], 6),
+    "Erro Padrão" = round(coeficientes[, "Std. Error"], 6),
+    "Estatística t" = round(coeficientes[, "t value"], 4),
+    "p-valor" = round(coeficientes[, "Pr(>|t|)"], 4)
+  )
+  
+  # Adiciona as medidas globais \( R^2 \) e \( R^2 \) ajustado
+  medidas_ajuste <- data.frame(
+    Coeficientes = c("R²", "R² Ajustado"),
+    Estimativa = c(round(r2, 4), round(r2_ajustado, 4)),
+    "Erro Padrão" = "",
+    "Estatística t" = "",
+    "p-valor" = ""
+  )
+  
+  # Combina os coeficientes e as medidas globais
+  resultado <- rbind(tabela_coef, medidas_ajuste)
+  resultado <- as.data.frame(apply(resultado, 2, function(x) gsub("\\.", ",", x)))
+  rownames(resultado) <- NULL
+  colnames(resultado)[c(3,4,5)] <- c("Erro Padrão", "Estatística T", "P-valor")
+  resultado[resultado$`P-valor` == 0, 5] <- "< 0,0001"
+  
+  # Retorna o data frame final
+  return(resultado)
+}
+
+# Testes de hipótese
+testes <- function(fit, variavel){
+  norm <- shapiro.test(rstudent(fit)) 
+  gq <- gqtest(fit, fraction = 1/5, order.by = variavel,alternative = "greater")
+  dw <- dwtest(fit, alternative = "two.sided") 
+  Teste = c("Shapiro-Wilk", "Goldfield-Quandt", "Durbin-Watson")
+  suposicoes = c("Normalidade", "Homoscedasticidade", "Não-Correlação")
+  P_valor = round(as.numeric(c(norm[2], gq[5], dw[4])),4)
+  tabela <- data.frame(Teste, suposicoes, P_valor)
+  tabela <- tabela %>% mutate(decisao = ifelse(P_valor < 0.05, "Rejeita hipótese nula", "Não rejeita hipótese nula"))
+  tabela[tabela$P_valor == 0] <- "<0.001"
+  colnames(tabela) <- c("Teste", "Suposições", "P-valor", "Decisão")
+  tabela <- as.data.frame(apply(tabela, 2, function(x) gsub("\\.", ",", x))) 
+  kable(tabela, caption = "Testes de hipóteses aplicados")
+}
+
+# Funcao para calculo da mudanca relativa
+MR <- function(a,b) cat("Mudança relativa = ", (b/a-1)*100, "%","\n")
+```
+
+Nesta primeira seção, foi feita uma análise com o objetivo de encontrar o melhor modelo de regressão linear ajustado para explicar a Dose total de radiação recebida. Para tal, utilizou-se de análise descritiva das variáveis, ajuste dos modelos, verificação de suposições e análise de diagnóstico.
+
+
+### Análise Descritiva
+
+Inicialmente, para compreender como as variáveis em estudo se comportam, foram elaborados histogramas e boxplots, além da análise das medidas descritivas. Após isso, verificou-se também como se dava a relação entre as variáveis.
+
+```{r}
+par(mfrow= c(1,2))
+hist(Dose, main = "Histograma da dose total\n de radiação recebida",ylab = "Frequência", col = "darkblue")
+boxplot(Dose, main = "Boxplot da dose total\n de radiação recebida", ylab = "Dose", col = "darkblue")
+
+
+```
+```{r}
+par(mfrow = c(1,2))
+hist(Time, main = "Histograma do tempo total\n do procedimento",ylab = "Frequência", xlab = "Tempo", col = "darkblue")
+boxplot(Time, main = "Boxplot do tempo total\n do procedimento", ylab = "Tempo", col = "darkblue")
+```
+
+```{r}
+
+kable(calcula_resumo(fluoro, c(1,2)), caption = "Tabela de Medidas-resumo", col.names = c("Medidas", "Tempo", "Dose"))
+```
+
+A partir dos gráficos, percebe-se uma certa assimetria à direita na distribuição dos valores das doses totais de radiação recebida, possuindo uma maior concentração de valores no intervalo de 0 à 10. Destaca-se ainda a diferença entre a média e a mediana, o que demonstra a influência que os valores mais altos podem estar exercendo nos dados. 
+Em relação ao tempo total do procedimento, temos uma distribuição mais simétrica, evidenciada pela proximidade entre a mediana e a média.
+
+```{r}
+#Encontrando a "melhor" transformação de Box-Cox:
+
+BC <- boxcox(Dose~Time, plotit = F)
+lambda2 <- BC$x[BC$y == max(BC$y)]
+Dose_bx <- bx(Dose, lambda2)
+```
+
+
+```{r}
+p1 <- ggplot(data = fluoro, aes(x = Time, y = Dose)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Dose x Tempo", x = "Tempo do Procedimento", y = "Dose Total Recebida")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p1
+```
+
+Analisando a relação entre as duas variáveis, percebe-se uma relação linear positiva, indicando que conforme o tempo aumenta, a Dose total também tende a aumentar. Vale destacar também que a variação dos dados também aparenta aumentar de acordo com o tempo do procedimento.
+
+
+
+### Transformações
+
+Com o objetivo de linearizar ainda mais a relação entre a Dose total recebida e o Tempo total do procedimento, foram aplicados transformações por logarítimico na variável resposta, na covariável e em ambas. Além dessas, também utitilizou-se transformação por BoxCox para a variável resposta, na qual, por meio de testes, foi encontrado o lambda ideal de -0,1.  
+
+A transformação de boxcox é uma das transformações mais conhecidas e utilizadas para normalizar a distribuição da variável resposta e estabilizar a variância. Ela é definida por:
+
+$$
+y^* =
+\begin{cases}
+\frac{y^\lambda - 1}{\lambda}, & \text{se } \lambda \neq 0, \\
+\log(y), & \text{se } \lambda = 0.
+\end{cases}
+$$
+onde $y > 0$. Apesar de essa transformação ser definida para todo $\lambda$ real, usualmente testa-se valores de $\lambda \in [-2, 2]$.
+
+
+Os gráficos de dispersão referentes à essas transformações se encontram abaixo. 
+
+```{r}
+p2 <- ggplot(data = fluoro, aes(x = Time, y = log(Dose))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Dose) x Tempo", x = "Tempo do Procedimento", y = "Log Dose Total Recebida")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p3 <- ggplot(data = fluoro, aes(x = Time, y = bx(Dose, lambda2))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Box cox Dose x Tempo", x = "Tempo do Procedimento", y = "Box cox Dose Total Recebida")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p2 | p3
+```
+
+```{r}
+p4 <- ggplot(data = fluoro, aes(x = log(Time), y = Dose)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Dose x log(Tempo)", x = "log Tempo do Procedimento", y = "Dose Total Recebida")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p5 <- ggplot(data = fluoro, aes(x = log(Time), y = log(Dose))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log Dose x log Tempo", x = "log Tempo do Procedimento", y = "log Dose Total Recebida")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+
+p4 | p5
+```
+Analisando os dois primeiros gráficos, é perceptível que a relação da variável resposta transformada com a covariável se tornou mais linear em ambos os casos, sendo inclusive os dois gráficos bastante similares. Isso se deve ao valor de lambda utilizado no boxcox ser bem próximo de 0, que é o lambda referente à transformação logarítimica. Tratando das relações que utilizaram transformação na covariável, o gráfico considerando a resposta original não apresentou uma relação mais linear, enquanto que a relação log na resposta e na covariável originou uma linearização semelhante aos gráficos que apresentam transformação apenas na resposta.
+
+A partir do que foi observado, optou-se por ajustar três modelos de regressão linear, alterando a apenas a variável resposta, sendo em um a variável original, e nos outros dois a variável transformada, descartando a relação com log em ambas variáveis, devido à sua maior complexidade por um ganho que o modelo mais "simples" já proporcionou.
+
+```{r}
+Resposta <- c("Dose", "log Dose", "Boxcox Dose")
+Covariável <- rep("Tempo de procedimento")
+tab <- data.frame(Resposta, Covariável)
+kable(tab, caption = "Modelos candidatos")
+```
+
+### Modelo Dose x Tempo
+
+
+#### Ajuste do modelo
+
+
+```{r}
+# Modelo Dose x tempo
+fit_simples = lm(Dose ~ Tempo)
+kable(resumo_lm_df(fit_simples), caption = "Ajuste do Modelo Dose x Tempo") 
+```
+
+A partir da tabela, temos que o modelo apresentou um ajuste adequado, considerando os dois coeficientes significativos, a um nível de significância de 5\%
+
+
+
+#### Análise das suposições
+
+Ao ajustar um modelo, é importante verificar se as suposições necessárias para sua inferência estão sendo cumpridas. Para isso, foram elaborados os seguintes gráficos:
+
+```{r}
+par(mfrow = c(1,2))
+envelope_LR(fit_simples)
+
+qqPlot(fit_simples, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(fit_simples);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(fit_simples),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(fit_simples), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Analisando os gráficos, não percebe-se um desvio em relação à suposição de normalidade dos erros, tanto observando o envelope pela distribuição Normal quanto pela distribuição exata dos resíduos, a T de Student, que é mais adequada já que não há um tamanho de amostra tão grande.
+
+A respeito da homoscedasticidade, é perceptível pelo gráfico de Resíduos x Valores ajustados que a variabilidade está aumentando conforme o valor ajustado aumenta, o que é um ponto de atenção, e além disso, destaca-se a observação 17 como um possível aberrante, ou seja, é provável que a observação 17 tenha obtido um ajuste ruim para a variável resposta, e consequentemente, pode ter impactado numa possível distorção do intercepto.
+
+Ademais, analisando a não-correlação dos erros, percebe-se novamente uma maior variabilidade, neste caso à medida que os dados foram coletados, mas sem apresentar nenhuma tendência clara, o que leva a não considerar como um desvio dessa suposição.
+
+Para gerar mais evidências para tal decisão, optou-se por aplicar um teste para cada uma delas, sendo o primeiro, o teste Shapiro-Wilk, que avalia a aderência dos resíduos studentizados à distribuição Normal, o segundo, o teste Goldfield-Quandt, que analisa se as variâncias dos resíduos studentizados são iguais, e por último o teste Durbin-Watson, que avalia a presença de correlação entre os resíduos studentizados. Esses testes possuem as seguintes hipóteses nula:
+
+```{r}
+Testes <- c("Shapiro-Wilk", "Goldfield-Quandt", "Durbin-Watson")
+H0 <- c("Os resíduos Studentizados seguem distribuição normal padrão", "As variâncias dos resíduos Studentizados são iguais", "Os resíduos Studentizados são não-correlacionados")
+
+banco <- data.frame(Testes, H0)
+kable(banco, col.names = c("Teste","Hipótesese nula"), caption = "Testes de hipóteses para as suposições")
+```
+
+
+
+```{r}
+testes(fit_simples, Tempo)
+```
+
+A partir dos resultados obtidos pelos testes, e também pelo que foi percebido nos gráficos, concluímos que esse modelo ajustado não cumpre com a suposição de homoscedasticidade, sendo evidenciado ainda pelo p-valor = 0,0039 do teste Goldfield-Quandt, que rejeita a hipótese nula à um nível de significância de 5\%.
+
+Portanto, concluímos aqui a análise do modelo Dose x Tempo, visto que o mesmo não cumpre com as suposições necessárias para seu procedimento inferencial.
+
+
+
+### Modelo Log(Dose) x Tempo
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo log(dose) x Tempo
+fit_log <- lm(log(Dose) ~ Tempo)
+kable(resumo_lm_df(fit_log), caption = "Ajuste do modelo Log(Dose) x Tempo")
+```
+
+A partir da tabela, temos que o modelo utilizando a resposta transformada via logarítimico apresentou um bom ajuste, apesar de considerar significativo apenas o coeficiente associado à variável explicativa, mas ainda assim manteremos o intercepto por questões inferenciais. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 70\% da variabilidade da resposta.
+
+\newpage
+#### Análise das suposições
+
+```{r}
+par(mfrow = c(1,2))
+envelope_LR(fit_log)
+
+qqPlot(fit_log, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(fit_log);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(fit_log),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(fit_log), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+```
+
+Analisando os gráficos, não percebe-se nenhum desvio em relação à suposição de normalidade dos erros, analisando nesse caso os resíduos studentizados, tanto pelo Envelope da Distribuição Normal, quanto pelo exato da Distribuição T. 
+
+Em questão à homoscedasticidade, não é perceptível nenhum tipo de tendência em relação aos resíduos studentizados, aparentando variarem de forma aleatória, destacando-se apenas a observação 10 como um ponto a ser investigado posteriormente.
+
+A respeito da não correlação dos erros, também não percebe-se nenhuma tendência pelo gráfico Resíduos x Índices.
+
+```{r}
+testes(fit_log, Tempo)
+```
+
+A partir dos testes aplicados, reforça-se a conclusão de que o modelo não apresenta desvios para nenhuma suposição, e portanto, segue-se para a análise de alavancagem e influência.
+
+#### Análise de alavancagem e influência
+
+Pontos alavanca são pontos que possuem peso desproporcional no próprio valor ajustado, geralmente tendo essa desproporcionalidade causada por possuírem uma inconformidade em relação ao valor da covariável. Além disso, eles também podemo exercer influência atípica nas estimativas dos coeficientes da regressão. Para identificar esses pontos, analisamos suas medidas de alavancagem, como pode-se visualizar no gráfico abaixo:
+
+```{r}
+
+plot(lm.influence(fit_log)$hat, xlab = "índice", ylab = "medida h", ylim=c(0,1), pch=16, main = "Alavancagem") 
+abline(4/length(Dose),0,lty=2, col="blue", lwd=2)
+abline(6/length(Dose),0,lty=2, col="red", lwd=2)
+legend(16,0.8,"4/n",col="blue",lty=2,lwd=2,bty="n")
+legend(16,0.9,"6/n",col="red",lty=2,lwd=2,bty="n")
+
+
+```
+
+A partir do gráfico, nota-se que os pontos 1 e 19 podem ser classificados como possíveis pontos de alavanca, devendo-se então realizar uma investigação sobre os mesmos.
+
+Já em relação à influência, são classificadas como influentes aquelas observações que exercem influência desproporcional nas estimativas dos parâmetros do modelo e podem causar mudança inferencial. Destaca-se que usualmente um ponto influente é aberrante e/ou alavanca. 
+
+Para realizar a identificação desses pontos, existem 3 medidas de influência:
+
+- **Distância de Cook**: Mede o efeito que a exclusão da i-ésima observação causa nos ajustes da resposta para todas as observações;
+
+- **DFFITS (Difference in fits)**:  Mensura o impacto da exclusão da i-ésima observação apenas no ajuste do ponto em questão;
+
+- **DFBETAS (Difference in betas)**: Avalia o impacto da i-ésima observação nas estimativas dos coeficientes. 
+
+```{r}
+n <- length(Dose)
+
+par(mfrow = c(1,2))
+plot(cooks.distance(fit_log), pch=16, xlab="índice", ylab="Distância de Cook", main = "Distâncias de Cook", ylim = c(0, .45))
+abline(4/n,0,lty=2,lwd=2, col="blue")
+
+plot(abs(dffits(fit_log)), pch=16, xlab="índice", ylab="DFFITS", main = "DFFITS", ylim = c(0, .8))
+abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dffits(fit_log))) 
+
+par(mfrow = c(1,2))
+plot(abs(dfbetas(fit_log)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto", main = "DFBETAS - Intercepto", ylim = c(0, .6))
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+
+plot(abs(dfbetas(fit_log)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.",  main = "DFBETAS - Coeficiente ang.", ylim = c(0, .6))
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+```
+
+Por meio dos gráficos plotados acima, não é possível observar nenhuma observação candidata à ponto de influência.
+
+\newpage
+
+#### Investigação dos pontos atípicos
+
+Para observar se os pontos considerados atípicos pelos procedimentos anteriores de fato causam algum tipo de influência ou distorção nos modelos, foram ajustados modelos retirando os pontos 1, 10 e 19, individualmente e conjuntamente, e a partir disso mensurou-se o impacto que os mesmos possuem nas estimativas do modelo, os quais são apresentados abaixo:
+
+```{r, include=F}
+fit_log_1 <- lm(log(Dose) ~ Tempo, subset = -c(1)); summary(fit_log_1)
+fit_log_10 <- lm(log(Dose) ~ Tempo, subset = -c(10)); summary(fit_log_10)
+fit_log_19 <- lm(log(Dose) ~ Tempo, subset = -c(19)); summary(fit_log_19)
+fit_log_11019 <- lm(log(Dose) ~ Tempo, subset = -c(1, 10, 19)); summary(fit_log_11019)
+
+MR(coef(fit_log), coef(fit_log_1))
+MR(coef(fit_log), coef(fit_log_10))
+MR(coef(fit_log), coef(fit_log_19))
+MR(coef(fit_log), coef(fit_log_11019))
+
+MR(summary(fit_log)$coefficients[7], summary(fit_log_1)$coefficients[7])
+MR(summary(fit_log)$coefficients[7], summary(fit_log_10)$coefficients[7])
+MR(summary(fit_log)$coefficients[7], summary(fit_log_19)$coefficients[7])
+MR(summary(fit_log)$coefficients[7], summary(fit_log_11019)$coefficients[7])
+
+MR(summary(fit_log)$coefficients[8], summary(fit_log_1)$coefficients[8])
+MR(summary(fit_log)$coefficients[8], summary(fit_log_10)$coefficients[8])
+MR(summary(fit_log)$coefficients[8], summary(fit_log_19)$coefficients[8])
+MR(summary(fit_log)$coefficients[8], summary(fit_log_11019)$coefficients[8])
+```
+
+```{r}
+atipicos <- data.frame( Pontos = c("Com todos pontos","Retirando 1", "Retirando 10", "Retirando 19", "Retirando 1, 10 e 19"),
+B0 = c("-0,199", "-0,302", "-0,268", "-0,308", "-0,544"),
+Mud_B0 = c("0%", "-51,2%", "-34,2%", "-54,0%", "-172,10%"),
+B1 = c("0,040", "0,041", "0,040", "0,042", "0,044"),
+Mud_B1 = c("0%", "2,9%", "0,2%", "4,0%", "9,1%"))
+
+kable(atipicos, caption = "Estimativas dos modelos retirando os pontos atípicos", col.names = c("Pontos", "Beta 0", "Mudança no Beta 0","Beta 1", "Mudança no Beta 1"))
+
+```
+
+
+```{r}
+atipicos_2 <- data.frame(Pontos = c("Com todos pontos","Retirando 1", "Retirando 10", "Retirando 19", "Retirando 1, 10 e 19"),
+p_B0 = c("0,675", "0,592", "0,527", "0,562", "0,339"),
+M_B0 = c("0%", "-12,3%", "-21,9%", "-16,7%", "-49,8%"),
+p_B1 = c("0,00000311  ", "0,0000165 ", "0,000000872", "0,0000133", "0,0000204"),
+M_B1 = c("0%", "429%", "-71%", "327%", "555%"))
+
+kable(atipicos_2, caption = "P-valores dos modelos retirando os pontos atípicos", col.names = c("Pontos", "P-valor Beta 0","Mudança no P-valor Beta 0", "P-valor Beta 1","Mudança no P-valor Beta 1"))
+```
+
+Analisando os resultados obtidos, percebe-se claramente que a retirada dos pontos impacta na diminuição do valor associado ao $\beta_0$, enquanto não apresenta um impacto considerável no $\beta1$. Apesar dessas alterações, a retirada desses pontos não gera mudança de significância nem de sinal com relação aos coeficientes, e nesse sentido a influência dos pontos atípicos não aparenta distorcer significativamente o ajuste do modelo. 
+
+Em resumo, a partir de tudo o que foi apresentado para este modelo, sem apresentar desvios das suposições e sem impacto considerável dos pontos atípicos, conclui-se que ele é um bom modelo apto para explicar a variável resposta, nesse caso transformada.
+
+\newpage
+
+### Modelo Boxcox(Dose) x Tempo
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo dose_boxcox x Tempo
+fit_box <- lm(Dose_bx ~ Tempo)
+kable(resumo_lm_df(fit_box), caption = "Ajuste do modelo Boxcox Dose x Tempo")
+```
+
+A partir da tabela, temos que o modelo utilizando a resposta transformada via Boxcox, com $\lambda = -0,1$, apresentou um bom ajuste, apesar de considerar significativo apenas o coeficiente associado à variável explicativa, mas ainda assim manteremos o intercepto por questões inferenciais. Destaca-se também o valor de R², que assim como foi visto no modelo passado, indica que este modelo está conseguindo explicar mais de 70\% da variabilidade da resposta.
+
+#### Análise das suposições
+
+```{r}
+par(mfrow = c(1,2))
+envelope_LR(fit_box)
+
+qqPlot(fit_box, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(fit_box);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(fit_box),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(fit_box), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+```
+
+Analisando os gráficos, novamente não percebe-se nenhum desvio em relação à suposição de normalidade dos erros, tanto pelo Envelope da Distribuição Normal, quanto pelo exato da Distribuição T. 
+
+Em questão à homoscedasticidade, não é perceptível nenhum tipo de tendência em relação aos resíduos studentizados, aparentando variarem de forma aleatória, destacando-se novamente apenas a observação 10 que novamente deve ser investigado.
+
+A respeito da não correlação dos resíduos, também não percebe-se nenhuma tendência pelo gráfico Resíduos x Índices, indicando que os resíduos foram obtidos de forma aleatória.
+
+
+```{r}
+testes(fit_box, Tempo)
+```
+
+A partir dos testes aplicados, reforça-se a conclusão de que o modelo não apresenta desvios para nenhuma suposição, e portanto, segue-se para a análise de alavancagem e influência.
+
+\newpage
+
+#### Análise de influência e alavancagem
+
+```{r}
+
+plot(lm.influence(fit_box)$hat, pch=16, xlab="índice", ylab="medida h", ylim=c(0,1), main = "Alavancagem")
+abline(4/length(Dose),0,lty=2, col="blue", lwd=2)
+abline(6/length(Dose),0,lty=2, col="red", lwd=2)
+legend(16,0.8,"4/n",col="blue",lty=2,lwd=2,bty="n")
+legend(16,0.9,"6/n",col="red",lty=2,lwd=2,bty="n")
+
+```
+
+A partir do gráfico, nota-se, assim como no modelo anterior, que os pontos 1 e 19 podem ser classificados como possíveis pontos de alavanca, devendo-se então realizar uma investigação sobre os mesmos.
+
+
+```{r}
+n <- length(Dose)
+
+par(mfrow = c(1,2))
+plot(cooks.distance(fit_box), pch=16, xlab="índice", ylab="Distância de Cook", main = "Distâncias de Cook", ylim = c(0, .45))
+abline(4/n,0,lty=2,lwd=2, col="blue")
+
+plot(abs(dffits(fit_box)), pch=16, xlab="índice", ylab="DFFITS", main = "DFFITS", ylim = c(0, .8))
+abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+ 
+par(mfrow = c(1,2))
+plot(abs(dfbetas(fit_box)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto", main = "DFBETAS - Intercepto", ylim = c(0, .6))
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+
+plot(abs(dfbetas(fit_box)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.",  main = "DFBETAS - Coeficiente ang.", ylim = c(0, .6))
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+```
+
+Em relação à influência, desta vez foi possível observar, por meio dos DFBETAS para o intercepto, o ponto 2 como um possível ponto influente, e que nesse caso, aparente causar influência desproporcional no intercepto.
+
+#### Investigação dos pontos atípicos
+
+A partir das técnicas aplicadas anteriormente, foram observados os pontos 1, 2, 10 e 19, como possíveis pontos atípicos, e portanto, estes serão investigados por meio do ajuste de modelos retirando os mesmos. 
+
+```{r, include=F}
+summary(fit_box)
+fit_box_1 <- lm(Dose_bx ~ Tempo, subset = -c(1)); summary(fit_box_1)
+fit_box_2 <- lm(Dose_bx ~ Tempo, subset = -c(2)); summary(fit_box_2)
+fit_box_10 <- lm(Dose_bx ~ Tempo, subset = -c(10)); summary(fit_box_10)
+fit_box_19 <- lm(Dose_bx ~ Tempo, subset = -c(19)); summary(fit_box_19)
+fit_box_w <- lm(Dose_bx ~ Tempo, subset = -c(1, 2, 10, 19)); summary(fit_box_w)
+
+MR(coef(fit_box), coef(fit_box_1))
+MR(coef(fit_box), coef(fit_box_2))
+MR(coef(fit_box), coef(fit_box_10))
+MR(coef(fit_box), coef(fit_box_19))
+MR(coef(fit_box), coef(fit_box_w))
+
+MR(summary(fit_box)$coefficients[7], summary(fit_box_1)$coefficients[7])
+MR(summary(fit_box)$coefficients[7], summary(fit_box_2)$coefficients[7])
+MR(summary(fit_box)$coefficients[7], summary(fit_box_10)$coefficients[7])
+MR(summary(fit_box)$coefficients[7], summary(fit_box_19)$coefficients[7])
+MR(summary(fit_box)$coefficients[7], summary(fit_box_w)$coefficients[7])
+
+MR(summary(fit_box)$coefficients[8], summary(fit_box_1)$coefficients[8])
+MR(summary(fit_box)$coefficients[8], summary(fit_box_2)$coefficients[8])
+MR(summary(fit_box)$coefficients[8], summary(fit_box_10)$coefficients[8])
+MR(summary(fit_box)$coefficients[8], summary(fit_log_19)$coefficients[8])
+MR(summary(fit_box)$coefficients[8], summary(fit_box_w)$coefficients[8])
+```
+
+```{r}
+atipicos <- data.frame( Pontos = c("Com todos pontos","Retirando 1","Retirando 2", "Retirando 10", "Retirando 19", "Retirando 1, 2, 10 e 19"),
+B0 = c("0,13", "0,07","0,30" ,"0,08", "0,03", "0,09"),
+Mud_B0 = c("0%", "-43%", "129%" ,"-37%", "-73%", "-28%"),
+B1 = c("0,030", "0,031","0,028" ,"0,030", "0,032", "0,031"),
+Mud_B1 = c("0%", "2,21%","-6,28%" ,"0,26%", "4,89%", "0,97%"))
+
+kable(atipicos, caption = "Estimativas dos modelos retirando os pontos atípicos", col.names = c("Pontos", "Beta 0", "Mudança no Beta 0","Beta 1", "Mudança no Beta 1"))
+
+```
+
+
+```{r}
+atipicos_2 <- data.frame(Pontos = c("Com todos pontos","Retirando 1", "Retirando 2", "Retirando 10", "Retirando 19", "Retirando 1, 2, 10 e 19"),
+p_B0 = c("0,705", "0,856","0,415" ,"0,790", "0,926", "0,83793"),
+M_B0 = c("0%", "21,5%","-41,0%" , "12,0%", "31,4%", "18,9%"),
+p_B1 = c("0,00000257", "0,0000153", "0,0000122" ,"0,000000727", "0,00000966 ", "0,00013"),
+M_B1 = c("0%", "496%","376%", "-71%", "418%", "4.962%"))
+
+kable(atipicos_2, caption = "P-valores dos modelos retirando os pontos atípicos", col.names = c("Pontos", "P-valor Beta 0","Mudança no P-valor Beta 0", "P-valor Beta 1","Mudança no P-valor Beta 1"))
+```
+
+A partir dos resultados obtidos na investigação, nota-se que o ponto 2 é o único que aumenta o valor associado ao $\beta_0$ quando é retirado, impactando em uma mudança relativa considerável de 129\% do mesmo. A retirada dos pontos de modo geral não trouxe uma variação considerável para o $\beta_1$. Dessa forma, apesar da grande mudança que o ponto 2 traz intercepto, não foi percebida nenhuma mudança de sinal nem de significância na investigação, o que também torna o modelo apto para escolha.
+
+
+\newpage 
+### Conclusão
+
+Por meio dos resultados obtidos, acredita-se que o melhor modelo de regressão simples ajustado seja o **Modelo log(Dose) x Tempo**, pois apresentou maior adequabilidade às suposições e possui menos pontos atípicos que o modelo boxcox(Dose) x Tempo, além de também não possuir uma interpretação tão dificultada quanto o mesmo
+
+```{r}
+kable(resumo_lm_df(fit_log), caption = "Ajuste do modelo escolhido - Log(Dose) x Tempo")
+```
+
+Analisando mais especificamente o ajuste do modelo, tem-se $\beta_0 = -0,19$, indicando a média do log da Dose total quando fixamos o valor da covariável Tempo à zero, o que não faz sentido no contexto do estudo. Além disso, tem-se $\beta_1 = 0,04$, que representa a variação na média do log da Dose total quando acrescenta-se uma unidade na covariável Tempo.
+
+Como utilizamos uma transformação na variável resposta para ajustar o modelo, os coeficientes são obtidos considerando a escala transformada. Felizmente, para o caso da transformação logarítimica, é possível facilmente encontrar as estimativas dos coeficientes para a escala da resposta original, apenas aplicando o exponencial nas estimativas do modelo com base na resposta transformada. Dessa forma, obtém-se que $e^{\beta_0} = 0,81$ e $e^{\beta_1} = 1,04$, ou seja, 0,81 é a média da resposta Dose total quando fixamos a covariável tempo à zero (não faz sentido nesse caso), e 1,04 é a variação na média da resposta Dose total quando acrescenta-se um segundo no tempo total do procedimento.
+
+
+```{r, include=FALSE}
+exp(fit_log$coefficients[1])
+exp(fit_log$coefficients[2])
+
+```
+
+Além disso, foi calculado o intervalo de confiança para os coeficientes, que segue na tabela abaixo:
+
+```{r}
+IC_fit_log <- confint(fit_log, level = 0.95)
+IC_fit_exp <- exp(IC_fit_log)
+
+LI <- round(IC_fit_log[c(1,2)],3)
+LS <- round(IC_fit_log[c(3,4)],3)
+Coeficientes <- c("Intercepto", "Tempo total")
+
+IC_table <- data.frame(Coeficientes, LI, LS)
+IC_table <- as.data.frame(apply(IC_table, 2, function(x) gsub("\\.", ",", x)))
+
+kable(IC_table, caption = "Intervalo de confiança para os coeficientes", col.names = c("Coeficientes", "Limite Inferior", "Limite Superior"))
+```
+Ademais, vale destacar que modelo apresenta  $R^2 = 0,731$, representando que mais de 73\% da variabilidade da Dose total recebida está sendo explicada pela modelo, o que é um indicativo de que o modelo consegue explicar bem a variável resposta.
+
+\newpage
+
+### Predições
+
+A partir dos coeficientes estimados pelo modelo ajustado, podemos realizar predições para a variável resposta com base em novos valores fixados para a covariável Tempo total, desde que estes estejam dentro do intervalo de valores do banco de dados original. Como nesse caso queremos predizer a resposta original, utilizou-se o exponencial dos coeficientes obtidos no modelo ajustado para a transformação logarítimica. As predições obtidas encontram-se na tabela abaixo:
+
+```{r}
+set.seed(1)
+`%notin%` <- Negate(`%in%`)
+tempos_fixados <- min(Tempo):max(Tempo)
+tempos_fixados <- tempos_fixados[tempos_fixados %notin% Tempo]
+tempos_fixados <- sort(sample(tempos_fixados, 15))
+
+previsoes <- exp(predict(fit_log, data.frame(Tempo = tempos_fixados)))
+previsoes <- data.frame(tempos_fixados, round(previsoes, 2))
+previsoes <- as.data.frame(apply(previsoes, 2, function(x) gsub("\\.", ",", x)))
+
+kable(previsoes, col.names = c("Tempos fixados", "Predições"), caption = "Predições da dose recebido para novos valores de Tempo de procedimento")
+```
+
+\newpage
+
+## Modelo de Regressão para ajuste do preço de imóveis
+
+```{r}
+imoveis <- read.table("imoveis.txt", sep = "", header = T)
+attach(imoveis)
+```
+
+Na segunda seção, foi feita uma análise com o objetivo de encontrar o melhor modelo de regressão linear ajustado para explicar o preço de imóveis (em US\$ 100). Para tal, utilizou-se de análise descritiva das variáveis, ajuste dos modelos, verificação de suposições e análise de diagnóstico.
+
+### Análise Descritiva
+
+```{r}
+par(mfrow = c(1,2))
+hist(preco, main = "Histograma do Preço \ndos imóveis",ylab = "Frequência", col = "darkblue", xlab = "Preço")
+boxplot(preco, main = "Boxplot do Preço \ndos imóveis", ylab = "Preço dos imóveis", col = "darkblue")
+```
+
+
+```{r}
+par(mfrow = c(1,2))
+hist(imposto, main = "Histograma do Imposto \ndos imóveis",ylab = "Frequência", col = "darkblue", xlab = "Imposto")
+boxplot(imposto, main = "Boxplot do Imposto \ndos imóveis", ylab = "Imposto dos imóveis", col = "darkblue")
+```
+
+
+```{r}
+par(mfrow = c(1,2))
+hist(idade, main = "Histograma da Idade\n dos imóveis",ylab = "Frequência", col = "darkblue", xlab = "Idade")
+boxplot(idade, main = "Boxplot da Idade\n dos imóveis", ylab = "Idade dos imóveis", col = "darkblue")
+```
+
+
+```{r}
+par(mfrow = c(1,2))
+hist(areaC, main = "Histograma da Área \nconstruída dos imóveis",ylab = "Frequência", col = "darkblue", xlab = "Área construída")
+boxplot(areaC, main = "Boxplot da Área \nconstruída dos imóveis", ylab = "Área construída dos imóveis", col = "darkblue")
+```
+
+```{r}
+par(mfrow = c(1,2))
+hist(areaT, main = "Histograma da Área do \nterreno dos imóveis",ylab = "Frequência", col = "darkblue", xlab = "Área do terreno")
+boxplot(areaT, main = "Boxplot da Área do \nterreno dos imóveis", ylab = "Área do terreno dos imóveis", col = "darkblue")
+
+```
+
+
+
+
+```{r}
+kable(calcula_resumo(imoveis), caption = "Medidas Resumo", col.names = c("Medida", "Imposto", "Área do terreno", "Área construída", "Idade", "Preço"))
+```
+Analisando o gráfico e as medidas-resumo, é possível perceber que a variável resposta, preço dos imóveis, apresenta uma distribuição assimétrica à direita, sendo isso ainda evidenciado pela presença de outliers superiores, ou valores discrepantes, no boxplot, além de apresentar também grande concentração dos imóveis com preço de até 5 mil dólares.
+
+Em relação à covariável Imposto, nota-se que esta também apresenta outliers superiores, apesar de não apresentar uma distribuição tão assimétrica quanto a Resposta. Destaca-se também uma grande concentração de imóveis com Imposto entre 400 e 600 dólares, e que dentre as variáveis do banco, Imposto é a que apresenta maior coeficiente de variação.
+
+Por outro lado, a variável idade apresenta uma distribuição simétrica, por sua vez contendo um valor discrepante inferior, sendo a variável que mais aparenta seguir uma distribuição normal, o que faz sentido dado sua natureza.
+
+Tratando da covariável Área construída, esta é a que apresenta distribuição mais semelhante à da variável resposta, sendo assimétrica à direita e também contendo dois outliers superiores. Destaca-se ainda uma considerável concentração de imóveis com área construída entre 1000 e 1500 pés quadrados.
+
+Por último, a covariável Área do Terreno apresenta uma distribuição bem menos assimétrica que a covariável Área construída, sendo perceptível a presença de um valor discrepante com Área do Terreno entre 12 e 14 mil pés quadrados.
+
+
+
+```{r}
+p1 <- ggplot(data = imoveis, aes(x = imposto, y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x Imposto", x = "Imposto", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+p2 <- ggplot(data = imoveis, aes(x = idade, y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x Idade", x = "Idade", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+(p1 | p2)
+```
+
+```{r}
+p3 <- ggplot(data = imoveis, aes(x = areaC, y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x Área construída", x = "Área construída", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+p4 <- ggplot(data = imoveis, aes(x = areaT, y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x Área do Terreno", x = "Área do Terreno", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+(p3 | p4)
+```
+
+Analisando a relação entre a variável resposta Preço do Imóvel e as covariáveis, destacam-se Imposto e Área construída, que apresentam relações positivas consideravelmente lineares com a variável resposta. No caso das duas, é perceptível a presença dos dois outliers para ambas variáveis, que provavelmente serão classificados como pontos atípicos mais a frente.
+
+A relação entre o preço dos imóveis e a idade não possui uma relação tão linear, sendo novamente perceptível a presença e o impacto dos dois outliers. Posteriormente a resposta será transformada, para tentar linearizar mais essa relação. 
+
+A variável Área do Terreno também apresenta uma relação linear positiva com o Preço dos imóveis, mas também não é tão forte quando a do Imposto ou da Área construída.
+
+### Transformações
+
+Com o objetivo de linearizar ainda mais a relação entre o Preço dos imóveis e as outras variáveis, aplicaram-se duas transformações na variável resposta, sendo uma a transformação logarítimica, e a outra uma transformação por Boxcox, na qual, por meio de simulação, foram encontrados o lambda ideal para cada relação. Além dessas, também testou-se a transformação logarítimica na covariável e a transformação logarítimica em ambos.
+
+```{r}
+p1 <- ggplot(data = imoveis, aes(x = imposto, y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x Imposto", x = "Imposto", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+#Encontrando a "melhor" transformação de Box-Cox:
+BC_pi <- boxcox(preco~imposto, plotit = F)
+lambda_pi <- BC_pi$x[BC_pi$y == max(BC_pi$y)]
+
+preco_bx_pi <- bx(preco, lambda_pi)
+
+p2 <- ggplot(data = imoveis, aes(x = imposto, y = bx(preco, lambda_pi))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Boxcox(Preço) x Imposto", x = "Imposto", y = "Boxcox(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+p3 <- ggplot(data = imoveis, aes(x = log(imposto), y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x log(Imposto)", x = "log(Imposto)", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p4 <- ggplot(data = imoveis, aes(x = log(imposto), y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x log(Imposto)", x = "log(Imposto)", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+p1 + p2
+
+p3 + p4
+
+```
+
+As transformações para a Resposta nesse caso conseguiriam linearizar ainda mais a relação entre Preço e o Imposto, com a transformação de Boxcox para $\lambda = -0,5$ apresentando uma relação aparentemente ainda melhor que a por log. Por outro lado, as relações com base no log do Imposto não demonstraram uma melhora significante. Assim, serão ajustados modelos para ambas transformações da resposta com a covariável original, além do ajuste de um modelo considerando a relação original.
+
+```{r}
+p1 <- ggplot(data = imoveis, aes(x = idade, y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x Idade", x = "Idade", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+#Encontrando a "melhor" transformação de Box-Cox:
+BC_p_idade <- boxcox(preco~idade, plotit = F)
+lambda_p_idade <- BC_p_idade$x[BC_p_idade$y == max(BC_p_idade$y)]
+
+preco_bx_p_idade <- bx(preco, lambda_p_idade)
+
+p2 <- ggplot(data = imoveis, aes(x = idade, y = bx(preco, lambda_p_idade))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Boxcox(Preço) x Idade", x = "Idade", y = "Boxcox(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p3 <- ggplot(data = imoveis, aes(x = log(idade), y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x log(Idade)", x = "log(Idade)", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p4 <- ggplot(data = imoveis, aes(x = log(idade), y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x log(Idade)", x = "log(Idade)", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+p1 + p2
+
+p3 + p4
+```
+
+Nesse caso, a transformação logarítimica não conseguiu linearizar tão bem a relação, tanto aplicada na resposta, na covariável ou em ambas, enquanto que a transformação por Boxcox, com $\lambda = -2$, obteve um resultado melhor. Nesse sentido, utilizando a covariável Idade, será ajustado apenas o modelo transformado por Boxcox.
+
+```{r}
+p1 <- ggplot(data = imoveis, aes(x = areaC, y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x Área construída", x = "Área construída", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+#Encontrando a "melhor" transformação de Box-Cox:
+BC_pa <- boxcox(preco~areaC, plotit = F)
+lambda_pa <- BC_pa$x[BC_pa$y == max(BC_pa$y)]
+
+preco_bx_pa <- bx(preco, lambda_pa)
+
+p2 <- ggplot(data = imoveis, aes(x = areaC, y = bx(preco, lambda_pa))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Boxcox(Preço) x Área construída", x = "Área construída", y = "Boxcox(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p3 <- ggplot(data = imoveis, aes(x = log(areaC), y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x log(Área Construída)", x = "log(Área Construída)", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p4 <- ggplot(data = imoveis, aes(x = log(areaC), y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x log(Área construída)", x = "log(Área Construída)", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+p1 + p2
+
+p3 + p4
+```
+
+A respeito da relação da resposta com a covariável Área construída, temos que a relação original já estava bem linearizada, e as transformações apenas na resposta mantiveram praticamente com a mesma relação, sendo utilizado $\lambda = 0,1$ para a transformação Boxcox. Nos casos em que se utilizou transformação logarítimica na covariável, não obteve-se uma melhora tão boa quanto as anteriores, mas ainda assim melhoraram a relação original. Dessa forma, serão ajustados modelos para a relação original e também para estas quatro transformações, considerando possíveis complicações relacionadas às suposições que podem surgir no modelo baseado na relação original.
+
+```{r}
+p1 <- ggplot(data = imoveis, aes(x = areaT, y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x Área do Terreno", x = "Área do Terreno", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+#Encontrando a "melhor" transformação de Box-Cox:
+BC_pat <- boxcox(preco~areaT, plotit = F)
+lambda_pat <- BC_pat$x[BC_pat$y == max(BC_pat$y)]
+
+preco_bx_pat <- bx(preco, lambda_pat)
+
+p2 <- ggplot(data = imoveis, aes(x = areaT, y = bx(preco, lambda_pat))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Boxcox(Preço) x Área do Terreno", x = "Área do Terreno", y = "Boxcox(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p3 <- ggplot(data = imoveis, aes(x = log(areaT), y = preco)) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n Preço x log(Área do Terreno)", x = "log(Área do Terreno)", y = "Preço")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p4 <- ggplot(data = imoveis, aes(x = log(areaT), y = log(preco))) +
+  geom_smooth(method = "lm", se = F, lwd = 1.25, color = "black") +
+  geom_point(size = 2.5, color = "darkblue") +
+  labs(title = "Gráfico de dispersão\n log(Preço) x log(Área do Terreno)", x = "log(Área do Terreno)", y = "log(Preço)")+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+p1 + p2
+
+p3 + p4
+
+```
+
+Sobre a relação da variável Resposta com a covariável Área do Terreno, as duas transformações aplicadas somente à resposta obtiveram sucesso em linearizar mais a relação original, enquanto que as relações considerando transformação na covariável não obtiveram o mesmo sucesso. Nesse contexto, temos que a transformação da resposta via boxcox com $\lambda = -1,4$ conseguiu uma relação bem mais linear que a transformada por log(preço). Assim, utiliando a covariável Área do Terreno, será ajustado apenas o modelo transformado por Boxcox.
+
+Dessa forma, temos 10 modelos candidatos para serem ajustados, os quais são apresentados na tabela abaixo:
+
+```{r}
+Número <- 1:10
+Resposta <- c("Preço", "log(Preço)", "Boxcox(Preço)", "Boxcox(Preço)", "Preço", "log(Preço)", "Boxcox(Preço)", "Preço" ,"log(Preço)" ,"Boxcox(Preço)")
+Covariável <- c("Imposto", "Imposto", "Imposto", "Idade", "Área construída", "Área construída", "Área construída", "log(Área construída)", "log(Área construída)" ,"Área do Terreno")
+tab <- data.frame(Número, Resposta, Covariável)
+kable(tab, caption = "Modelos candidatos", align = "c") 
+```
+
+
+### Modelo Preço x Imposto
+
+#### Ajuste do modelo
+
+
+```{r}
+# Modelo preço x imposto
+fit_pi_simples <- lm(preco ~ imposto)
+kable(resumo_lm_df(fit_pi_simples), caption = "Ajuste do modelo Preço x Imposto")
+```
+A partir da tabela, temos que o modelo utilizando a resposta original e a covariável Imposto apresentou um bom ajuste, apesar de considerar significativo apenas o coeficiente associado à variável explicativa, mas ainda assim manteremos o intercepto por questões inferenciais. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 83\% da variabilidade da resposta, o que é um ótimo resultado.
+
+\newpage
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pi_simples
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Tratando das suposições sob o modelo, é perceptível pelos gráficos de envelope que há uma considerável parcela de observações fora do envelope simulado, indicando que provavelmente há um desvio dessa suposição.
+
+Em relação à homoscedasticidade, percebe-se uma tendência à maior variação dos dados à medida que o valor ajustado aumenta, indicando que provavelmente a variância dos resíduos não seja a mesma. Destaca-se ainda que os pontos 9, 10 e 27 são considerados como possíveis aberrantes, e provavelmente obtiveram um ajuste da resposta ruim.
+
+A respeito da não correlação, não é perceptível uma grande tendência em relação à coleta dos dados.
+
+```{r}
+testes(fit_pi_simples, imposto)
+```
+A partir da aplicação dos testes, temos que, sob um nível de significância de 5\%, há evidências estatísticas suficientes para rejeitar as hipóteses nula tanto relacionadas com a normalidade dos resíduos quando com sua homoscedasticidade. Nesse sentido, e também pelo que pôde ser visto nos gráficos, o modelo em questão não cumpre com suposições necessárias para sua inferência, e portanto, sua análise encerra nesse ponto.
+
+
+### Modelo log(Preço) x Imposto
+
+#### Ajuste do modelo
+```{r}
+# Modelo log(preço) x imposto
+fit_pi_log <- lm(log(preco) ~ imposto)
+kable(resumo_lm_df(fit_pi_log), caption = "Ajuste do Modelo log(Preço) x Imposto")
+```
+A partir da tabela, temos que o modelo utilizando a resposta transformada via logarítimico apresentou um ótimo ajuste, considerando os dois coeficientes significativos. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 86\% da variabilidade da resposta, o que é um resultado ainda melhor que o obtido pela resposta original e a mesma covariável.
+
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pi_log
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+A respeito das suposições, tratando-se da normalidade dos erros, novamente nota-se algumas observações fora do envelope, menos que do que foi percebido no modelo anterior, mas ainda assim preocupante para a adequação à suposição de normalidade.
+
+Em relação à homoscedasticidade, é perceptível a mesma tendência de aumento da variação dos resíduos à medida que o valor ajustado aumenta, indicando uma possível diferença de variâncias. Destaca-se neste modelo apenas a observação 27 como provável aberrante, indicando que houve uma melhora no ajuste dos pontos 9 e 10 em comparação com o modelo anterior.
+
+Tratando da não correlação dos resíduos, não percebe-se nenhuma tendência em relação ordem de coleta dos dados.
+
+```{r}
+testes(fit_pi_log, imposto)
+```
+A partir dos testes aplicados, novamente são apresentadas evidências estatísticas suficientes para acreditar que o modelo não está adequado para as suposições que devem feitas sobre ele, e portanto, sua análise se encerra nesse ponto.
+
+
+### Modelo Boxcox(Preço) x Imposto
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo BoxCox(preco) x imposto
+fit_pi_box <- lm(preco_bx_pi ~ imposto)
+kable(resumo_lm_df(fit_pi_box), caption = "Ajuste do modelo Boxcox(Preço) x Imposto")
+```
+A partir da tabela, temos que o modelo utilizando a resposta transformada via Boxcox com $\lambda = -0,5$ apresentou um ótimo ajuste, considerando ambos os coeficientes significativos. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 84\% da variabilidade da resposta, que é um ótimo indicador, sendo próximo do atingido pelo modelo do log da resposta.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pi_box
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Em relação à suposição de normalidade dos erros, este modelo obteve um resultado melhor que os dois modelos anteriores, apresentando apenas uma observação realmente fora do envelope em ambos gráficos, o que pode ser considerado aceitável.
+
+Tratando da suposição de homoscedasticidade, percebe-se um aumento da variabilidade dos resíduos à medida que o valor ajustado aumenta, apresentando o ponto 27 como possível aberrante, comportamento que já pôde ser notado nos modelos anteriores.
+
+Sobre a não correlação dos resíduos, agora é possível observar uma certa tendência crescente no valor dos resíduos studentizados, indicando um indício contra a suposição de não-correlação dos resíduos.
+
+
+```{r}
+testes(fit_pi_box, imposto)
+```
+
+Apesar de todos os testes aplicados não rejeitarem a hipótese nula, opta-se por descartar o modelo em questão devido ao desvio da suposição de não correlação apresentado no gráfico.
+
+
+### Modelo Boxcox(Preço) x Idade
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo BoxCox(preco) x Idade
+fit_p_idade <- lm(preco_bx_p_idade ~ idade)
+kable(resumo_lm_df(fit_p_idade), caption = "Ajuste do modelo Boxcox(preço) x Idade")
+```
+A partir da tabela, temos que o modelo utlizando a variável resposta transformada via Boxcox com $\lambda = -2$ apresentou um ajuste não tão bom, apesar de considerar os dois coeficientes significativos, a um nível de significância de 5\%. O modelo apresente um valor baixo para R², indicando que este só consegue explicar menos de 20\% da variabilidade da resposta.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_p_idade
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Tratando da normalidade dos erros, não há nenhum ponto que foge consideravelmente para fora do envelope, evidenciando nenhum tipo de possível desvio à essa suposição.
+
+Em relação à homoscedasticidade, percebe-se os resíduos distribuídos de forma bem mais aleatória, sem apresentar nenhuma tendência clara, destacando-se apenas um ponto como possível aberrante, a observação 9. 
+
+Sobre a não correlação dos resíduos, é perceptível uma tendência crescente dos resíduos studentizados com relação à ordem de coleta dos dados, sendo portanto um forte indício de desvio da suposição de não-correlação.
+
+```{r}
+testes(fit_p_idade, idade)
+```
+
+Apesar dos testes aplicados não rejeitarem as suas respectivas hipóteses nulas, opta-se por descartar o modelo em questão devido ao forte indício de desvio da suposição de não correlação dos resíduos.
+
+
+### Modelo Preço x Área Construída
+
+#### Ajuste do modelo
+
+
+```{r}
+# Modelo preço x área construída
+fit_pa_simples <- lm(preco ~ areaC)
+kable(resumo_lm_df(fit_pa_simples), caption = "Ajuste do modelo Preço x Área construída")
+```
+A partir da tabela, temos que o modelo utilizando a resposta original e a covariável Área construída apresentou um ótimo ajuste, apesar de considerar significativo apenas o coeficiente associado à variável explicativa, mas ainda assim manteremos o intercepto por questões inferenciais. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 86\% da variabilidade da resposta, o que é um ótimo resultado, sendo o modelo que melhor conseguiu explicar a resposta até o momento.
+
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pa_simples
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Tratando-se sobre a normalidade dos erros, não percebe-se nenhum ponto muito distante ou fora do envelope, indicando que não há indícios de um desvio dessa suposição, ainda mais considerando a distribuição exata T.
+
+Em relação à homoscedasticidade, percebe-se uma maior homogeneidade dos resíduos e alguns valores que destoam com relação ao aumento do valor ajustado, além de apresentar um possível ponto aberrante, a observação 10.
+
+A respeito da não correlação dos erros, percebe-se uma certa tendência crescente, mas não é tão acentuada ao ponto considerar como um desvio à essa suposição.
+
+
+```{r}
+testes(fit_pa_simples, areaC)
+
+```
+
+Pelos resultados apresentados pelos testes aplicados, aparentemente não há nenhuma evidência estatística que leve a crer que o modelo ajustado não se adeque às suposições feitas para seu procedimento inferencial. Nesse sentido, segue-se para a análise de alavangem e influência.
+
+#### Análise de alavancagem e influência
+
+```{r}
+
+plot(lm.influence(fit_pa_simples)$hat, xlab = "índice", ylab = "medida h", ylim=c(0,1), pch=16, main = "Alavancagem") 
+abline(4/length(preco),0,lty=2, col="blue", lwd=2)
+abline(6/length(preco),0,lty=2, col="red", lwd=2)
+legend(23,0.8,"4/n",col="blue",lty=2,lwd=2,bty="n")
+legend(23,0.9,"6/n",col="red",lty=2,lwd=2,bty="n")
+
+
+```
+A partir do gráfico acima, que plota as medidas de alavangem dos resíduos, tem-se que os pontos 9 e 10 podem ser considerados como possíveis pontos de alavanca, ou seja, pontos que possuem um peso desproporcional em relação ao seu valor ajustado, muito provavelmente por serem considerados valores discrepantes com relação à área construída dos imóveis.
+
+
+```{r}
+n <- length(preco)
+modelo <- fit_pa_simples
+  
+par(mfrow = c(1,2))
+plot(cooks.distance(modelo), pch=16, xlab="índice", ylab="Distância de Cook", main = "Distâncias de Cook")
+abline(4/n,0,lty=2,lwd=2, col="blue")
+
+plot(abs(dffits(modelo)), pch=16, xlab="índice", ylab="DFFITS", main = "DFFITS")
+abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dffits(fit_pa_simples))) 
+
+par(mfrow = c(1,2))
+plot(abs(dfbetas(modelo)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto", main = "DFBETAS - Intercepto")
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+
+plot(abs(dfbetas(modelo)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.",  main = "DFBETAS - coeficiente ang.")
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dfbetas(fit_pa_simples)[,2])) 
+```
+Em relação à pontos influentes, destaca-se em todos os gráficos apenas a observação 10, que curiosamente, também se destacou como um possível aberrante e também como possível ponto de alavanca, indicando claramente que tal observação não obteve um bom ajuste e também pode causando uma certa influência nas estimativas dos coeficientes.
+
+
+\newpage 
+
+#### Investigação dos pontos atípicos 
+
+
+A partir das técnicas aplicadas anteriormente, destacaram-se os pontos 9 e 10 como pontos atípicos, que então serão investigados por meio do ajuste de modelos retirando esses pontos.
+
+```{r, include=F}
+summary(fit_pa_simples)
+fit_pa_9 <- lm(preco ~ areaC, subset = -c(9)); summary(fit_pa_9)
+fit_pa_10 <- lm(preco ~ areaC, subset = -c(10)); summary(fit_pa_10)
+fit_pa_w <- lm(preco ~ areaC, subset = -c(9,10)); summary(fit_pa_w)
+
+MR(coef(fit_pa_simples), coef(fit_pa_9))
+MR(coef(fit_pa_simples), coef(fit_pa_10))
+MR(coef(fit_pa_simples), coef(fit_pa_w))
+
+MR(summary(fit_pa_simples)$coefficients[7], summary(fit_pa_9)$coefficients[7])
+MR(summary(fit_pa_simples)$coefficients[7], summary(fit_pa_10)$coefficients[7])
+MR(summary(fit_pa_simples)$coefficients[7], summary(fit_pa_w)$coefficients[7])
+
+MR(summary(fit_pa_simples)$coefficients[8], summary(fit_pa_9)$coefficients[8])
+MR(summary(fit_pa_simples)$coefficients[8], summary(fit_pa_10)$coefficients[8])
+MR(summary(fit_pa_simples)$coefficients[8], summary(fit_pa_w)$coefficients[8])
+```
+
+```{r}
+atipicos <- data.frame( Pontos = c("Com todos pontos","Retirando 9", "Retirando 10", "Retirando 9 e 10"),
+B0 = c("2,506", "3,116", "5,639", "14,879"),
+Mud_B0 = c("0%", "24,3%", "125,0%", "493,7%"),
+B1 = c("23,804", "23,354", "21,414", "14,524"),
+Mud_B1 = c("0%", "-1,89%", "-10,0%", "-38,9%"))
+
+kable(atipicos, caption = "Estimativas dos modelos retirando os pontos atípicos", col.names = c("Pontos", "Beta 0", "Mudança no Beta 0","Beta 1", "Mudança no Beta 1"))
+
+```
+
+
+```{r}
+atipicos_2 <- data.frame(Pontos = c("Com todos pontos","Retirando 9", "Retirando 10", "Retirando 9 e 10"),
+p_B0 = c("0,419", "0,439","0,091", "0,005" ),
+M_B0 = c("0%", "4,68%", "-78,12%", "-98,71%"),
+p_B1 = c("<0,000000001", "0,0000000055", "0,0000000003", "0,00034"),
+M_B1 = c("0%", "194.835%", "11.735%", "12.101.785.022%"))
+
+kable(atipicos_2, caption = "P-valores dos modelos retirando os pontos atípicos", col.names = c("Pontos", "P-valor Beta 0","Mudança no P-valor Beta 0", "P-valor Beta 1","Mudança no P-valor Beta 1"))
+```
+Ao analisar os resultados obtidos pela investigação dos pontos atípicos, observa-se que o valor de $\beta_0$ aumenta com a retirada dos pontos, enquanto $\beta_1$ tende a diminuir. Essa dinâmica percebida foi tão considerável, que chegou a mudar a significância do p-valor associado ao $\beta_0$, indicando nesse sentido que os pontos 9 e 10 de fato exercem uma influência desproporcional na estimativa do intercepto.
+
+Nesse sentido, apesar do modelo ter apresentado um ótimo ajuste e adequação às suposições, ele aparenta ser sensível aos pontos atípicos, e portanto, não possui robustez para explicar a resposta.
+\newpage
+
+### Modelo log(Preço) x Área Construída
+
+#### Ajuste do modelo
+
+
+```{r}
+# Modelo log(preço) x área construída
+fit_pa_log <- lm(log(preco) ~ areaC)
+kable(resumo_lm_df(fit_pa_log), caption = "Ajuste do modelo log(Preço) x Área construída")
+```
+A partir da tabela, temos que o modelo utilizando a resposta transformada via logarítimico apresentou um ótimo ajuste, considerando os dois coeficientes significativos. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 80\% da variabilidade da resposta, o que é um bom resultado, mas apresenta menos 6\% de explicabilidade com relação ao modelo anterior, ajustado considerando a resposta original.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pa_log
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Em relação à normalidade dos erros, novamente não há nenhum forte indício de desvio dessa suposição, apesar de ser possível visualizar dois pontos que estão posicionados mais na fronteira do envelope.
+
+Sobre a homoscedasticidade dos erros, não nota-se nenhum tipo de comportamento heterogêneo pelos resíduos studentizados, destacando-se apenas os pontos 8 e 27 como possíveis aberrantes.
+
+Tratando sobre a não correlação dos erros, percebe-se claramente uma relação crescente dos resíduos studentizados à medida que foram coletados, indicando um forte indício de que há um desvio contra tal suposição.
+
+```{r}
+testes(fit_pa_log, areaC)
+```
+A partir dos resultados obtidos pelos testes aplicados, de fato há evidências estatísticas suficentes para rejeitar a hipótese nula de não correlação dos erros, indicando assim que o modelo ajustado não está adequado com relação às suposições realizadas sob o ajuste do mesmo, e portanto, encerra-se a análise do modelo neste ponto.
+
+
+\newpage
+
+### Modelo Boxcox(Preço) x Área Construída
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo BoxCox(preco) x área construída
+fit_pa_box <- lm(preco_bx_pa ~ areaC)
+kable(resumo_lm_df(fit_pa_box), caption = "Ajuste do modelo Boxcox(Preço) x Área construída")
+```
+A partir da tabela, temos que o modelo utilizando a resposta transformada via Boxcox com $\lambda = 0,1$ apresentou um ótimo ajuste, considerando os dois coeficientes significativos. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 81\% da variabilidade da resposta, o que é um bom resultado, mas apresenta menos 5\% de explicabilidade com relação ao modelo ajustado considerando a resposta original.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pa_box
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Tratando-se da normalidade dos erros, temos que ambos gráficos de envelope não apresentam nenhum indício de desvio dessa suposição, com todos os pontos consideravelmente inseridos dentro do envelope.
+
+Com relação à homoscedasticidade, novamente não observa-se nenhum tipo de tendência clara de comportamento dos resíduos studentizados, apenas destacando-se as observações 8 e 27 como possíveis aberrantes.
+
+Sobre a não correlação, assim como para o modelo anterior, novamente é perceptível uma tendência crescente dos resíduos studentizados com relação à ordem de coleta dos dados, indicando assim um considerável indício de desvio para essa suposição no modelo.
+
+```{r}
+testes(fit_pa_box, areaC)
+```
+Analisando os resultados obtidos pelos testes aplicados, apenas reforça-se o que já havia sido percebido nos gráficos, de que há evidências estatísticas suficientes para rejeitar a hipótese nula de que os erros são não correlacionados, e portanto, temos que modelo não está cumprindo com uma suposição necessária para a sua inferência, e portanto, encerra-se sua análise neste ponto.
+
+\newpage
+
+### Modelo Preço x log(Área Construída)
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo preço x log(área construída)
+log_ac = log(areaC)
+fit_p_log_a <- lm(preco ~ log_ac)
+kable(resumo_lm_df(fit_p_log_a), caption = "Ajuste do modelo Preço x log(Área construída)")
+```
+
+Analisando a tabela acima, temos que o modelo utilizando a resposta original e a covariável transformada via logarítimico apresentou um ajuste muito bom, considerando os ambos coeficientes significativos. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 75\% da variabilidade da resposta, o que é um bom resultado, mesmo sendo um valor abaixo do que os modelos anteriores ajustados para estas variáveis apresentaram.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_p_log_a
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+# identify(fitted(modelo),tsi)
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Em relação à normalidade dos erros, novamente não há nenhum forte indício de desvio dessa suposição, sem apresentar pontos fora do envelope.
+
+Sobre a homoscedasticidade dos erros, destaca-se apenas o ponto 10 com resíduo studentizado maior que 2, sendo portanto um ponto a ser investigado posteriormente. Percebe-se também um comportamento heterogêneo dos resíduos de forma geral, muito provavelmente devido à presença de outliers para as duas variáveis.
+
+Tratando sobre a não correlação dos erros, percebe-se uma leve tendência crescente dos resíduos studentizados à medida que foram coletados, não sendo esta suficiente para interpretar-se como um desvio à essa suposição.
+
+```{r}
+testes(fit_p_log_a, log_ac)
+```
+Pelos resultados apresentados pelos testes aplicados, não existe nenhuma evidência estatística indicando que o modelo ajustado não se adeque às suposições feitas para seu procedimento inferencial. Nesse sentido, segue-se para a análise de alavangem e influência.
+
+\newpage
+
+#### Análise de alavancagem e influência
+
+```{r}
+
+plot(lm.influence(fit_p_log_a)$hat, xlab = "índice", ylab = "medida h", ylim=c(0,1), pch=16, main = "Alavancagem") 
+abline(4/length(preco),0,lty=2, col="blue", lwd=2)
+abline(6/length(preco),0,lty=2, col="red", lwd=2)
+legend(23,0.8,"4/n",col="blue",lty=2,lwd=2,bty="n")
+legend(23,0.9,"6/n",col="red",lty=2,lwd=2,bty="n")
+
+
+```
+A partir do gráfico acima, que apresenta as medidas de alavangem dos resíduos, tem-se que os pontos 9 e 10 podem ser considerados como possíveis pontos de alavanca, ou seja, pontos que possuem um peso desproporcional em relação ao seu valor ajustado, muito provavelmente por serem considerados valores discrepantes com relação à área construída dos imóveis, e serão investigados posteriormente.
+
+
+```{r}
+n <- length(preco)
+modelo <- fit_p_log_a
+  
+par(mfrow = c(1,2))
+plot(cooks.distance(modelo), pch=16, xlab="índice", ylab="Distância de Cook", main = "Distâncias de Cook")
+abline(4/n,0,lty=2,lwd=2, col="blue")
+
+plot(abs(dffits(modelo)), pch=16, xlab="índice", ylab="DFFITS", main = "DFFITS")
+abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dffits(fit_p_log_a))) 
+
+par(mfrow = c(1,2))
+plot(abs(dfbetas(modelo)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto", main = "DFBETAS - Intercepto")
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dfbetas(fit_p_log_a)[,1])) 
+
+plot(abs(dfbetas(modelo)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.",  main = "DFBETAS - coeficiente ang.")
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dfbetas(fit_p_log_a)[,2])) 
+```
+Em relação à pontos influentes, destaca-se em todos os gráficos as observações 9 e 10, além de também ser possível notar a observação 13 como um possível ponto influente com relação ao intercepto.
+
+#### Investigação
+
+A partir das técnicas aplicadas anteriormente, destacaram-se os pontos 9, 10 e 13 como pontos atípicos, que então serão investigados por meio do ajuste de modelos retirando esses pontos individual e conjuntamente.
+
+```{r, include=F}
+summary(fit_p_log_a)
+fit_p_log_a9 <- lm(preco ~ log(areaC), subset = -c(9)); summary(fit_p_log_a9)
+fit_p_log_a10 <- lm(preco ~ log(areaC), subset = -c(10)); summary(fit_p_log_a10)
+fit_p_log_a13 <- lm(preco ~ log(areaC), subset = -c(13)); summary(fit_p_log_a13)
+fit_p_loga_w <- lm(preco ~ log(areaC), subset = -c(9,10, 13)); summary(fit_p_loga_w)
+
+MR(coef(fit_p_log_a), coef(fit_p_log_a9))
+MR(coef(fit_p_log_a), coef(fit_p_log_a10))
+MR(coef(fit_p_log_a), coef(fit_p_log_a13))
+MR(coef(fit_p_log_a), coef(fit_p_loga_w))
+
+MR(summary(fit_p_log_a)$coefficients[7], summary(fit_p_log_a9)$coefficients[7])
+MR(summary(fit_p_log_a)$coefficients[7], summary(fit_p_log_a10)$coefficients[7])
+MR(summary(fit_p_log_a)$coefficients[7], summary(fit_p_log_a13)$coefficients[7])
+MR(summary(fit_p_log_a)$coefficients[7], summary(fit_p_loga_w)$coefficients[7])
+
+MR(summary(fit_p_log_a)$coefficients[8], summary(fit_p_log_a9)$coefficients[8])
+MR(summary(fit_p_log_a)$coefficients[8], summary(fit_p_log_a10)$coefficients[8])
+MR(summary(fit_p_log_a)$coefficients[8], summary(fit_p_log_a13)$coefficients[8])
+MR(summary(fit_p_log_a)$coefficients[8], summary(fit_p_loga_w)$coefficients[8])
+```
+
+```{r}
+atipicos <- data.frame(Pontos = c("Com todos pontos","Retirando 9","Retirando 10", "Retirando 13", "Retirando 9, 10 e 13"),
+B0 = c("23,4", "25,0","24,9" ,"22,5", "28,6"),
+Mud_B0 = c("0%", "6,7%", "6,2%" ,"-3,9%", "21,8%"),
+B1 = c("41,2", "35,2","35,3" ,"42,8", "20,4"),
+Mud_B1 = c("0%", "-14,6%","-14,4%" ,"3,8%", "-50,3%"))
+
+kable(atipicos, caption = "Estimativas dos modelos retirando os pontos atípicos", col.names = c("Pontos", "Beta 0", "Mudança no Beta 0","Beta 1", "Mudança no Beta 1"))
+
+```
+
+
+```{r}
+atipicos_2 <- data.frame(Pontos = c("Com todos pontos","Retirando 9","Retirando 10", "Retirando 13", "Retirando 9, 10 e 13"),
+p_B0 = rep("<0,000000001",5),
+M_B0 = c("0%", "-37,4%","-84,9%" , "695,8%", "-99,6%"),
+p_B1 = c("<0,000000001", "0,000001012", "0,000000168" ,"0,000000004", "0,000558"),
+M_B1 = c("0%", "26.536%","4.332%", "7%", "14.672.692%"))
+
+kable(atipicos_2, caption = "P-valores dos modelos retirando os pontos atípicos", col.names = c("Pontos", "P-valor Beta 0","Mudança no P-valor Beta 0", "P-valor Beta 1","Mudança no P-valor Beta 1"))
+```
+Obsevando os resultados obtidos pela investigação dos pontos, percebe-se que as observações 9 e 10 aumentam o valor do $\beta_0$ e diminuem o valor do $\beta_1$ quando são retirados, enquanto que a observação 13 apresenta o efeito contrário. Apesar dessa dinâmica, não foi apresentada nenhuma mudança de significância com relação aos coeficientes, indicando que tais pontos não geram uma alteração muito significante nas estimativas do modelo. Dessa forma, conclui-se que o modelo em questão é um forte candidato para explicar a variável resposta, apresentando a robustez necessária.
+
+### Modelo log(Preço) x log(Área Construída)
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo log(preço) x área construída
+fit_pa_log2 <- lm(log(preco) ~ log(areaC))
+kable(resumo_lm_df(fit_pa_log2), caption = "Ajuste do modelo log(Preço) x log(Área construída)")
+```
+Analisando a tabela acima, temos que o modelo utilizando transformação logarítimica tanto na resposta quanto na covariável apresentou um ajuste muito bom, considerando, novamente ambos coeficientes significativos. Destaca-se também o valor de R², indicando que o modelo consegue explicar mais de 75\% da variabilidade da resposta, o que é um bom resultado, semelhante ao obtido pelo modelo ajustdo anteriormente.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pa_log2
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+# identify(fitted(modelo),tsi)
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Em relação à normalidade dos erros, novamente não há nenhum forte indício de desvio dessa suposição, apresentando apenas dois pontos localizados na fronteira do envelope.
+
+Sobre a homoscedasticidade dos erros, destaca-se apenas o ponto 8 com resíduo studentizado maior que 2, sendo portanto um ponto a ser investigado posteriormente. Percebe-se também um comportamento mais aleatório dos resíduos de forma geral, com praticamente todos os resíduos no intervalo de -2 a 2.
+
+Tratando sobre a não correlação dos erros, percebe-se uma tendência crescente mais forte dos resíduos studentizados à medida que foram coletados, sendo esta suficiente para interpretar-se como um considerável indício de desvio à essa suposição.
+
+```{r}
+testes(fit_pa_log2, log(areaC))
+```
+Apesar dos testes aplicados não rejeitarem as suas respectivas hipóteses nulas, opta-se por descartar o modelo em questão devido ao forte indício de desvio da suposição de não correlação dos erros.
+
+
+### Modelo Boxcox(Preço) x Área do Terreno
+
+#### Ajuste do modelo
+
+```{r}
+# Modelo BoxCox(preco) x areaT
+fit_pat <- lm(preco_bx_pat ~ areaT)
+kable(resumo_lm_df(fit_pat), caption = "Ajuste do modelo Boxcox(Preço) x Área do Terreno")
+```
+A partir da tabela, temos que o modelo utlizando a variável resposta transformada via Boxcox com $\lambda = -2$ apresentou um ajuste adequado,  considerando ambos coeficientes significativos, a um nível de significância de 5\%. O modelo apresenta um valor não tão alto para R², indicando que este consegue explicar 50\% da variabilidade da resposta, o que está abaixo do que pôde-se observar nos outros modelos ajustados.
+
+#### Análise das suposições
+
+```{r}
+modelo <- fit_pat
+par(mfrow = c(1,2))
+envelope_LR(modelo)
+
+qqPlot(modelo, id = F, main = "Envelope Dist. T", ylab = "Resíduos studentizados", xlab = "Quantis Distribuição T")
+
+tsi <- rstudent(modelo);a <- max(tsi);b <- min(tsi)
+
+par(mfrow = c(1,2))
+
+
+p <- plot(fitted(modelo),tsi,xlab="Valor ajustado",ylab="Resíduo studentizados", main = "Resíduos x Valores ajustados", ylim=c(b-1,a+1), pch=16)+
+abline(-2,0,lty=2, col="red", lwd=2)+
+abline(2,0,lty=2, col="red", lwd=2)+
+abline(0,0,lty=2, col="blue", lwd=2)
+
+
+plot(rstudent(modelo), xlab = "Índices", ylab = "Resíduos studentizados", main = "Resíduos x Índices")
+
+```
+Em relação à normalidade dos resíduos, percebe-se apenas um ponto consideravelmente fora do envelope, em ambos gráficos, mas ainda assim podemos considerar sem um grande indício de desvio de normalidade.
+
+Sobre a homoscedasticidade, percebe-se uma certa homogeneidade distribuição dos resíduos studentizados com relação aos valores ajustados, destacando-se apenas a observação 8 como provável aberrante.
+
+Tratando-se da suposição de não-correlação dos resíduos, não é perceptível uma tendência tão clara de comportamento dos resíduos com base na ordem de coleta da amostra. 
+
+```{r}
+testes(fit_pat, areaT)
+```
+Por meio dos testes aplicados, sob um nível de significância de 5\%, não há evidências estatísticas suficientes para acreditar que o modelo ajustado esteja adequado com relação às suposições necessárias para seu procedimento inferencial. Nesse sentido, segue-se para a análise de alavancagem e influência.
+
+
+#### Análise de alavancagem e influência
+
+```{r}
+
+plot(lm.influence(fit_pat)$hat, xlab = "índice", ylab = "medida h", ylim=c(0,1), pch=16, main = "Alavancagem") 
+abline(4/length(preco),0,lty=2, col="blue", lwd=2)
+abline(6/length(preco),0,lty=2, col="red", lwd=2)
+legend(23,0.8,"4/n",col="blue",lty=2,lwd=2,bty="n")
+legend(23,0.9,"6/n",col="red",lty=2,lwd=2,bty="n")
+# identify(lm.influence(fit_pat)$hat)
+
+
+```
+Analisando o gráfico acima, que apresenta as medidas de alavancagem pela ordem de coleta da amostra, nota-se a observação 10 como um possível ponto de alavanca, o que é justificável dado ao seu comportamento atípico com relação à covariável Área do terreno, sendo considerada um outlier.
+
+
+```{r}
+n <- length(preco)
+modelo <- fit_pat
+  
+par(mfrow = c(1,2))
+plot(cooks.distance(modelo), pch=16, xlab="índice", ylab="Distância de Cook", main = "Distâncias de Cook")
+abline(4/n,0,lty=2,lwd=2, col="blue")
+# identify(cooks.distance(fit_pat))
+
+plot(abs(dffits(modelo)), pch=16, xlab="índice", ylab="DFFITS", main = "DFFITS")
+abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dffits(fit_pat))) 
+
+par(mfrow = c(1,2))
+plot(abs(dfbetas(modelo)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto", main = "DFBETAS - Intercepto")
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dfbetas(fit_pat)[,1])) 
+
+plot(abs(dfbetas(modelo)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.",  main = "DFBETAS - coeficiente ang.")
+abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+# identify(abs(dfbetas(fit_pat)[,2])) 
+```
+Em relação aos pontos de influência, pelos gráficos destacam-se as observações 8, 9 e 21 como possíveis pontos de influência, sendo que o ponto 21 se destacou apenas no gráfico DFFITS - Intercepto, demonstrando assim que tal ponto talvez esteja influenciando na estimativa do intercepto. Nota-se que o ponto 8 apresenta a maior medida de influência em todos os gráficos, além de também ser considerado um aberrante.
+
+\newpage
+
+#### Investigação dos pontos atípicos
+
+A partir das técnicas aplicadas anteriormente, destacaram-se os pontos 8, 9, 10 e 21 como pontos atípicos, que então serão investigados por meio do ajuste de modelos retirando esses pontos individual e conjuntamente.
+
+```{r, include=F}
+summary(fit_pat)
+fit_pat_8 <- lm(preco_bx_pat ~ areaT, subset = -c(8)); summary(fit_pat_8)
+fit_pat_9 <- lm(preco_bx_pat ~ areaT, subset = -c(9)); summary(fit_pat_9)
+fit_pat_10 <- lm(preco_bx_pat ~ areaT, subset = -c(10)); summary(fit_pat_10)
+fit_pat_21 <- lm(preco_bx_pat ~ areaT, subset = -c(21)); summary(fit_pat_21)
+fit_pat_w <- lm(preco_bx_pat ~ areaT, subset = -c(8, 9, 10, 21)); summary(fit_pat_w)
+
+MR(coef(fit_pat), coef(fit_pat_8))
+MR(coef(fit_pat), coef(fit_pat_9))
+MR(coef(fit_pat), coef(fit_pat_10))
+MR(coef(fit_pat), coef(fit_pat_21))
+MR(coef(fit_pat), coef(fit_pat_w))
+
+MR(summary(fit_pat)$coefficients[7], summary(fit_pat_8)$coefficients[7])
+MR(summary(fit_pat)$coefficients[7], summary(fit_pat_9)$coefficients[7])
+MR(summary(fit_pat)$coefficients[7], summary(fit_pat_10)$coefficients[7])
+MR(summary(fit_pat)$coefficients[7], summary(fit_pat_21)$coefficients[7])
+MR(summary(fit_pat)$coefficients[7], summary(fit_pat_w)$coefficients[7])
+
+MR(summary(fit_pat)$coefficients[8], summary(fit_pat_8)$coefficients[8])
+MR(summary(fit_pat)$coefficients[8], summary(fit_pat_9)$coefficients[8])
+MR(summary(fit_pat)$coefficients[8], summary(fit_pat_10)$coefficients[8])
+MR(summary(fit_pat)$coefficients[8], summary(fit_pat_21)$coefficients[8])
+MR(summary(fit_pat)$coefficients[8], summary(fit_pat_w)$coefficients[8])
+```
+
+```{r}
+atipicos <- data.frame( Pontos = c("Com todos pontos","Retirando 8","Retirando 9", "Retirando 10", "Retirando 21", "Retirando 8, 9, 10 e 21"),
+B0 = rep("0,70", 6),
+Mud_B0 = c("0%", "-0,04%", "0,03%" ,"0,01%", "-0,03%", "-0,05%"),
+B1 = c("0,0004", "0,0005","0,0004" ,"0,0004", "0,0005", "0,0005"),
+Mud_B1 = c("0%", "15,0%","-10,1%" ,"-4,9%", "5,7%", "11,7%"))
+
+kable(atipicos, caption = "Estimativas dos modelos retirando os pontos atípicos", col.names = c("Pontos", "Beta 0", "Mudança no Beta 0","Beta 1", "Mudança no Beta 1"))
+
+```
+
+
+```{r}
+atipicos_2 <- data.frame(Pontos = c("Com todos pontos","Retirando 8", "Retirando 9", "Retirando 10", "Retirando 21", "Retirando 8, 9, 10 e 21"),
+p_B0 = rep("<0,00000001", 6),
+M_B0 = c("0%", "102%","7.167%" , "371.528%", "15.062%", "18.253.242.336%"),
+p_B1 = c("0,0000135", "0,00000016", "0,0000555" ,"0,000276", "0,00000597 ", "0,00000982 "),
+M_B1 = c("0%", "-98%","311%" ,"1.948%", "-55%", "-27%"))
+
+kable(atipicos_2, caption = "P-valores dos modelos retirando os pontos atípicos", col.names = c("Pontos", "P-valor Beta 0","Mudança no P-valor Beta 0", "P-valor Beta 1","Mudança no P-valor Beta 1"))
+```
+
+A partir dos resultados obtidos pela investigação dos pontos atípicos, nota-se claramente que a retirada dos pontos não impacta consideravelmente nas estimivativas dos coeficientes, sendo a maior mudança observado igual à apenas 15\%, indicando portanto que tais pontos não exercem influência desproporcional em tais estimativas. Nesse sentido, o modelo também está apto para ser escolhido para explicar a variável resposta. 
+
+\newpage
+
+### Conclusão
+
+```{r}
+Número <- 1:10
+Resposta <- c("Preço", "log(Preço)", "Boxcox(Preço)", "Boxcox(Preço)", "Preço", "log(Preço)", "Boxcox(Preço)", "Preço" ,"log(Preço)" ,"Boxcox(Preço)")
+Covariável <- c("Imposto", "Imposto", "Imposto", "Idade", "Área construída", "Área construída", "Área construída", "log(Área construída)", "log(Área construída)" ,"Área do Terreno")
+Suposições <- c("Desvio de normalidade e homoscedasticidade", "Desvio de normalidade", "Desvio de não correlação", "Desvio de não correlação", "Adequação das suposições", "Desvio de não correlação", "Desvio de não correlação", "Adequação das suposições" , "Desvio de não correlação","Adequação das suposições")
+Pontos <- c("", "", "", "", "9 e 10", "", "", "9, 10 e 13", "", "8, 9, 10 e 21")
+tab <- data.frame(Número, Resposta, Covariável, Suposições, Pontos)
+kable(tab, caption = "Modelos propostos", align = "c", col.names = c("N", "Resposta", "Covariável", "Suposições", "Pontos atípicos"))
+```
+
+De acordo com a análise diagnóstica, acredito que o melhor modelo de regressão simples ajustado é o **Modelo 8, Preço x log(Área construída)**, pois este apresenta maior adequabilidade às suposições e não aparenta ser sensível aos pontos atípicos, demonstrando uma certa robustez na estimação dos parâmetros, além de explicar melhor a variabilidade dos dados, apresentando $R^2 = 0,75670$, ou seja, o modelo está explicando mais de 75% da variabilidade da resposta.  
+
+```{r}
+kable(resumo_lm_df(fit_p_log_a), caption = "Ajuste do modelo Preço x log(Área construída)")
+```
+Analisando mais especificamente o ajuste do modelo, tem-se $\beta_0 = 23,46952$, indicando a média do Preço dos imóveis quando fixamos o log da Área construída à zero, ou consequentemente, quando fixamos o valor da Área construída à 1 (equivalente à mil metros quadrados, na escala da variável). Além disso, tem-se $\beta_1 = 41,27896$, que representa a variação na média do Preço dos imóveis quando aumenta-se uma unidade no log da Área construída do imóvel. Além disso, segue abaixo o intervalo de confiança para os coeficientes:
+
+\newpage
+
+```{r}
+IC_fit_pa <- confint(fit_p_log_a, level = 0.95)
+
+LI <- round(IC_fit_pa[c(1,2)],3)
+LS <- round(IC_fit_pa[c(3,4)],3)
+Coeficientes <- c("Intercepto", "Tempo total")
+
+IC_table <- data.frame(Coeficientes, LI, LS)
+IC_table <- as.data.frame(apply(IC_table, 2, function(x) gsub("\\.", ",", x)))
+
+kable(IC_table, caption = "Intervalo de confiança para os coeficientes", col.names = c("Coeficientes", "Limite Inferior", "Limite Superior"))
+```
+
+
+### Predições
+
+A partir dos coeficientes estimados pelo modelo ajustado, podemos realizar predições para a variável resposta com base em novos valores fixados para o log da Área construída, desde que estes estejam dentro do intervalo de valores do banco de dados. As predições obtidas encontram-se na tabela abaixo:
+
+
+
+```{r}
+
+areas_fixadas <- seq(min(log_ac),max(log_ac), .001)
+areas_fixadas <- areas_fixadas[areas_fixadas %notin% log_ac]
+areas_fixadas <- sort(sample(areas_fixadas, 20))
+
+previsoes <- predict(fit_p_log_a, data.frame(log_ac = areas_fixadas))
+previsoes <- data.frame(round(areas_fixadas,2), round(previsoes, 2))
+previsoes <- as.data.frame(apply(previsoes, 2, function(x) gsub("\\.", ",", x)))
+
+kable(previsoes, col.names = c("Áreas fixadas", "Predições"), caption = "Predições do Preço dos imóveis (em US$ 100) para novos valores do log da Área construída (em 1000 pés quadrados)")
+```
+
+
+
