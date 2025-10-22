@@ -56,6 +56,58 @@ boxlife <- boxcox(mod_aroma, plotit = TRUE)
 lambda1 <- boxlife$x[which.max(boxlife$y)]
 lambda1
 
+# transformações claridade
+mod_claridade <- lm(qualidade ~ claridade, data = wine)
+summary(mod_claridade)
+
+ggplot(wine, aes(x = claridade, y = qualidade)) +
+  geom_point(shape = 16, size = 2) +                     
+  geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+  labs(
+    x = "Claridade",
+    y = "Qualidade"
+  ) +
+  meu_tema
+
+# log na resposta
+mod_claridade1 <- lm(log(qualidade) ~ claridade, data = wine)
+summary(mod_claridade1)
+
+ggplot(wine, aes(x = claridade, y = log(qualidade))) +
+  geom_point(shape = 16, size = 2) +                     
+  geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+  labs(
+    x = "Claridade",
+    y = "log(Qualidade)"
+  ) +
+  meu_tema
+
+# raiz quadrada na resposta
+mod_claridade2 <- lm(sqrt(qualidade) ~ claridade, data = wine)
+summary(mod_claridade2)
+
+ggplot(wine, aes(x = claridade, y = sqrt(qualidade))) +
+  geom_point(shape = 16, size = 2) +                     
+  geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+  labs(
+    x = "Claridade",
+    y = "sqrt(Qualidade)"
+  ) +
+  meu_tema
+
+# log na reposta e na explicativa
+mod_claridade3 <- lm(log(qualidade) ~ log(claridade), data = wine)
+summary(mod_aroma3)
+
+ggplot(wine, aes(x = log(claridade), y = log(qualidade))) +
+  geom_point(shape = 16, size = 2) +                     
+  geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+  labs(
+    x = "log(Aroma)",
+    y = "log(Qualidade)"
+  ) +
+  meu_tema
+
 # transformações corpo
 
 # original

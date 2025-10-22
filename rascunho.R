@@ -14,6 +14,8 @@ ggplot(wine, aes(x = aroma, y = qualidade)) +
 
 ## Normalidade 
 envelope_LR(mod_aroma,  main.title = "")
+
+
 # Teste de Normalidade
 shapiro.test(rstudent(mod_aroma))
 
@@ -56,6 +58,7 @@ ggplot(wine, aes(x = corpo, y = qualidade)) +
 
 ## Normalidade 
 envelope_LR(mod_corpo,  main.title = "")
+qqPlot(mod_corpo)
 # Teste de Normalidade
 shapiro.test(rstudent(mod_corpo))
 

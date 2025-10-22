@@ -9,6 +9,8 @@ require(glmtoolbox)
 wine <- read.table("wine.txt", header=TRUE)
 attach(wine)
 
+source("envelope.R")
+
 # Nosso interesse aqui é explicar a "qualidade" do vinho em função de uma única 
 # variável escolhida a partir demais variáveis disponíveis. As variáveis que podem ser 
 # utilizadas individualmente para explicar a qualidade do vinho são:
@@ -370,6 +372,78 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   # Teste de homocedasticidade 
   gqtest(mod_claridade, fraction=1/3, order.by=model.frame(mod_claridade)$claridade, alternative="two.sided")
     
+  ## Não correlação dos erros
+  tsi <- rstudent(mod_claridade);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_claridade, alternative = "two.sided")
+  
+# Ajuste modelo aroma --------------------------------------------------------
+  par(mfrow = c(1, 2))  
+  
+ mod_aroma <- lm(qualidade ~ aroma, data = wine); summary(mod_aroma)
+  
+  ggplot(wine, aes(x = aroma, y = qualidade)) +
+    geom_point(shape = 16, size = 2) +                     
+    geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+    labs(
+      x = "Aroma",
+      y = "Qualidade"
+    ) +
+    meu_tema
+  
+  # log na resposta
+
+  mod_aroma1 <- lm(log(qualidade) ~ aroma, data = wine); summary(mod_aroma1)
+  
+  ggplot(wine, aes(x = aroma, y = log(qualidade))) +
+    geom_point(shape = 16, size = 2) +                     
+    geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+    labs(
+      x = "Aroma",
+      y = "Log(qualidade)"
+    ) +
+    meu_tema
+  
+  ggsave("graficos/disp_aroma_log.pdf", width = 158, height = 93, units = "mm")
+  
+  # Ajuste modelo corpo --------------------------------------------------------
+  par(mfrow = c(1, 2))  
+  
+  mod_corpo<- lm(qualidade ~ corpo, data = wine); summary(mod_corpo)
+  
+  ggplot(wine, aes(x = corpo, y = qualidade)) +
+    geom_point(shape = 16, size = 2) +                     
+    geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+    labs(
+      x = "Corpo",
+      y = "Qualidade"
+    ) +
+    meu_tema
+  
+  library(MASS)
+  boxlife <- boxcox(mod_aroma, plotit = TRUE)
+  lambda1 <- boxlife$x[which.max(boxlife$y)]
+  lambda1
+
+  ## Normalidade 
+  envelope_LR(mod_claridade,  main.title = "")
+  # Teste de Normalidade
+  shapiro.test(rstudent(mod_claridade))
+  
+  ## Homogeneidade
+  tsi <- rstudent(mod_claridade);a <- max(tsi);b <- min(tsi)
+  
+  plot(fitted(mod_claridade),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_claridade, fraction=1/3, order.by=model.frame(mod_claridade)$claridade, alternative="two.sided")
+  
   ## Não correlação dos erros
   tsi <- rstudent(mod_claridade);a <- max(tsi);b <- min(tsi)
   plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
