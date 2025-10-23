@@ -424,15 +424,103 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
     ) +
     meu_tema
   
-  library(MASS)
-  boxlife <- boxcox(mod_aroma, plotit = TRUE)
-  lambda1 <- boxlife$x[which.max(boxlife$y)]
-  lambda1
+# Ajuste mdelo sabor -----------------------------------------------------------
+ 
+  # original
+  
+  mod_sabor     <- lm(qualidade ~ sabor, data = wine)
+  summary(mod_sabor)
+  
+  ggplot(wine, aes(x = sabor, y = qualidade)) +
+    geom_point(shape = 16, size = 2) +                     
+    geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+    labs(
+      x = "Sabor",
+      y = "Qualidade"
+    ) +
+    meu_tema
+  
+  # log na resposta
+  
+  mod_sabor1 <- lm(log(qualidade) ~ sabor, data = wine)
+  summary(mod_sabor1)
+  
+  ggplot(wine, aes(x = sabor, y = log(qualidade))) +
+    geom_point(shape = 16, size = 2) +                     
+    geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+    labs(
+      x = "Sabor",
+      y = "Log(qualidade)"
+    ) +
+    meu_tema
+  
+  # raiz quadrada resposta
+  mod_sabor2     <- lm(sqrt(qualidade) ~ sabor, data = wine)
+  summary(mod_sabor2)
+  
+  ggplot(wine, aes(x = sabor, y = sqrt(qualidade))) +
+    geom_point(shape = 16, size = 2) +                     
+    geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
+    labs(
+      x = "Sabor",
+      y = "sqrt(Qualidade)"
+    ) +
+    meu_tema
+  
+    
+######## Normalidade ###############################################################
+  
+  # aroma
+  envelope_LR(mod_aroma, main.title = "")
+  
+  envelope_LR(mod_aroma1, main.title = "")
+  
+  qqPlot(mod_aroma,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
+  
+  qqPlot(mod_aroma1,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
 
-  ## Normalidade 
-  envelope_LR(mod_claridade,  main.title = "")
   # Teste de Normalidade
-  shapiro.test(rstudent(mod_claridade))
+  shapiro.test(rstudent(mod_aroma))
+  shapiro.test(rstudent(mod_aroma1))
+  
+  # corpo
+  envelope_LR(mod_corpo, main.title = "")
+  
+  qqPlot(mod_corpo,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
+  
+  # Teste de Normalidade
+  shapiro.test(rstudent(mod_corpo))
+  
+  # sabor
+  envelope_LR(mod_sabor, main.title = "")
+  
+  envelope_LR(mod_sabor1, main.title = "")
+  
+  envelope_LR(mod_sabor2, main.title = "")
+  
+  qqPlot(mod_sabor,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
+  
+  qqPlot(mod_sabor1,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
+  
+  qqPlot(mod_sabor2,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
+  
+  # Teste de Normalidade
+  shapiro.test(rstudent(mod_sabor))
+  shapiro.test(rstudent(mod_sabor1))
+  shapiro.test(rstudent(mod_sabor2))
+  
   
   ## Homogeneidade
   tsi <- rstudent(mod_claridade);a <- max(tsi);b <- min(tsi)
