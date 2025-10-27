@@ -549,6 +549,7 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(-2,0,lty=2, col="red", lwd=2)
   abline(2,0,lty=2, col="red", lwd=2)
   abline(0,0,lty=2, col="blue",lwd=2)
+  identify(fitted(mod_aroma),tsi) # 20, 30
   # Teste de homocedasticidade 
   gqtest(mod_aroma, fraction=1/3, order.by=model.frame(mod_aroma)$aroma, alternative="two.sided")
   
@@ -557,6 +558,7 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(-2,0,lty=2, col="red", lwd=2)
   abline(2,0,lty=2, col="red", lwd=2)
   abline(0,0,lty=2, col="blue",lwd=2)
+  identify(fitted(mod_aroma1),tsi) # 20, 30
   # Teste de homocedasticidade 
   gqtest(mod_aroma1, fraction=1/3, order.by=model.frame(mod_aroma1)$aroma, alternative="two.sided")
   
@@ -568,6 +570,7 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(-2,0,lty=2, col="red", lwd=2)
   abline(2,0,lty=2, col="red", lwd=2)
   abline(0,0,lty=2, col="blue",lwd=2)
+  identify(fitted(mod_corpo),tsi) # 15, 20
   # Teste de homocedasticidade 
   gqtest(mod_corpo, fraction=1/3, order.by=model.frame(mod_corpo)$corpo, alternative="two.sided")
   
@@ -578,6 +581,7 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(-2,0,lty=2, col="red", lwd=2)
   abline(2,0,lty=2, col="red", lwd=2)
   abline(0,0,lty=2, col="blue",lwd=2)
+  identify(fitted(mod_sabor),tsi) # 9, 20
   # Teste de homocedasticidade 
   gqtest(mod_sabor, fraction=1/3, order.by=model.frame(mod_sabor)$sabor, alternative="two.sided")
   
@@ -668,4 +672,75 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(0,0,lty=2, col="blue",lwd=2)
   # Teste de não correlação    
   dwtest(mod_sabor2, alternative = "two.sided")  
+  
+  # alavancagem
+  
+  # aroma 1
+  
+  plot(lm.influence(mod_aroma1)$hat, pch=16, xlab="Índice", ylab="Medida h", ylim=c(0,0.22))
+  abline(4/length(aroma),0,lty=2, col="blue", lwd=2)
+  abline(6/length(aroma),0,lty=2, col="red", lwd=2)
+  legend(34,0.22,"4/n",col="blue",lty=2,lwd=2,bty="n")
+  legend(34,0.21,"6/n",col="red",lty=2,lwd=2,bty="n")
+  
+  identify(lm.influence(mod_aroma1)$hat)
+  
+  # corpo
+  
+  plot(lm.influence(mod_corpo)$hat, pch=16, xlab="Índice", ylab="Medida h", ylim=c(0,0.22))
+  abline(4/length(corpo),0,lty=2, col="blue", lwd=2)
+  abline(6/length(corpo),0,lty=2, col="red", lwd=2)
+  legend(34,0.22,"4/n",col="blue",lty=2,lwd=2,bty="n")
+  legend(34,0.21,"6/n",col="red",lty=2,lwd=2,bty="n")
+  
+  identify(lm.influence(mod_corpo)$hat)  
+  
+  
+  # Influência -------------------------------------------------
+  # aroma1 ----
+  n <- length(aroma)
+  
+  # Distâncias de Cook
+  plot(cooks.distance(mod_aroma1), pch=16, xlab="índice", ylab="Distância de Cook")
+  abline(4/n,0,lty=2,lwd=2, col="blue")
+  identify(cooks.distance(mod_aroma1)) # 20
+  
+  # DFFITS
+  plot(abs(dffits(mod_aroma1)), pch=16, xlab="índice", ylab="DFFITS")
+  abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dffits(mod_aroma1))) 
+  
+  # DFBETAS - Intercepto
+  plot(abs(dfbetas(mod_aroma1)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto")
+  abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dfbetas(mod_aroma1)[,1])) 
+  
+  # DFBETAS - Coeficiente ang.
+  plot(abs(dfbetas(mod_aroma1)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coef. angular")
+  abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dfbetas(mod_aroma1)[,2])) 
+  
+  
+  # corpo ----
+  n <- length(corpo)
+  
+  # Distâncias de Cook
+  plot(cooks.distance(mod_aroma1), pch=16, xlab="índice", ylab="Distância de Cook")
+  abline(4/n,0,lty=2,lwd=2, col="blue")
+  identify(cooks.distance(mod_aroma1)) 
+  
+  # DFFITS
+  plot(abs(dffits(mod_corpo)), pch=16, xlab="índice", ylab="DFFITS")
+  abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dffits(mod_corpo))) 
+  
+  # DFBETAS - Intercepto
+  plot(abs(dfbetas(mod_corpo)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto")
+  abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dfbetas(mod_corpo)[,1])) 
+  
+  # DFBETAS - Coeficiente ang.
+  plot(abs(dfbetas(mod_corpo)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.")
+  abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dfbetas(mod_corpo)[,2])) 
   
