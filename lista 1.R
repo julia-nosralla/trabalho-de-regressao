@@ -541,3 +541,131 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   # Teste de não correlação    
   dwtest(mod_claridade, alternative = "two.sided")
   
+  # aroma
+  
+  tsi <- rstudent(mod_aroma);a <- max(tsi);b <- min(tsi)
+  
+  plot(fitted(mod_aroma),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_aroma, fraction=1/3, order.by=model.frame(mod_aroma)$aroma, alternative="two.sided")
+  
+  tsi <- rstudent(mod_aroma1);a <- max(tsi);b <- min(tsi)
+  plot(fitted(mod_aroma1),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_aroma1, fraction=1/3, order.by=model.frame(mod_aroma1)$aroma, alternative="two.sided")
+  
+  # corpo
+  
+  tsi <- rstudent(mod_corpo);a <- max(tsi);b <- min(tsi)
+  
+  plot(fitted(mod_corpo),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_corpo, fraction=1/3, order.by=model.frame(mod_corpo)$corpo, alternative="two.sided")
+  
+  # sabor
+  
+  tsi <- rstudent(mod_sabor);a <- max(tsi);b <- min(tsi)
+  plot(fitted(mod_sabor),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_sabor, fraction=1/3, order.by=model.frame(mod_sabor)$sabor, alternative="two.sided")
+  
+  
+  tsi <- rstudent(mod_sabor1);a <- max(tsi);b <- min(tsi)
+  plot(fitted(mod_sabor1),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_sabor1, fraction=1/3, order.by=model.frame(mod_sabor1)$sabor, alternative="two.sided")
+  
+  
+  tsi <- rstudent(mod_sabor2);a <- max(tsi);b <- min(tsi)
+  plot(fitted(mod_sabor2),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_sabor2, fraction=1/3, order.by=model.frame(mod_sabor2)$sabor, alternative="two.sided")
+  
+  bptest(mod_aroma)
+  bptest(mod_aroma1)
+  bptest(mod_corpo)
+  bptest(mod_sabor)
+  bptest(mod_sabor1)
+  bptest(mod_sabor2)
+  
+  ## Não correlação dos erros
+  tsi <- rstudent(mod_sabor);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_sabor, alternative = "two.sided")
+  
+  # aroma
+  
+  tsi <- rstudent(mod_aroma);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_aroma, alternative = "two.sided")
+
+  tsi <- rstudent(mod_aroma1);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_aroma1, alternative = "two.sided")  
+
+  # corpo
+  
+  tsi <- rstudent(mod_corpo);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_corpo, alternative = "two.sided")
+  
+  # sabor
+  
+  tsi <- rstudent(mod_sabor);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_sabor, alternative = "two.sided")  
+  
+  tsi <- rstudent(mod_sabor1);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_sabor1, alternative = "two.sided")
+  
+  tsi <- rstudent(mod_sabor2);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_sabor2, alternative = "two.sided")  
+  
