@@ -68,6 +68,15 @@ gqtest(mod_aroma1, fraction=1/3, order.by=model.frame(mod_aroma1)$aroma, alterna
 #a variância parece diminuir no final do gráfico, formato de funil. 
 # há dois pontos a serem investigados, abaixo de -2 (observações 20 e 30)
 
+tsi <- rstudent(mod_aroma2);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_aroma2),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_aroma2),tsi)
+
+gqtest(mod_aroma2, fraction=1/3, order.by=model.frame(mod_aroma2)$aroma, alternative="two.sided")
+
 tsi <- rstudent(mod_aroma3);a <- max(tsi);b <- min(tsi)
 plot(fitted(mod_aroma3),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
 abline(h = c(-3, -2, 0, 2, 3),
@@ -79,6 +88,15 @@ gqtest(mod_aroma3, fraction=1/3, order.by=model.frame(mod_aroma3)$aroma, alterna
 
 # a variância parece diminuir no final do gráfico, formato de funil. 
 # há dois pontos a serem investigados, abaixo de -2 (observações 20 e 30)
+
+tsi <- rstudent(mod_aroma4);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_aroma4),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_aroma4),tsi)
+
+gqtest(mod_aroma4, fraction=1/3, order.by=model.frame(mod_aroma4)$aroma, alternative="two.sided")
 
 
 ## Não correlação dos erros
@@ -98,8 +116,24 @@ abline(h = c(-3, -2, 0, 2, 3),
        lty = c(3, 2, 2, 2, 3))
 identify(tsi)
 # observações 20 e 30 abaixo de -2
+
+tsi <- rstudent(mod_aroma2);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
    
-dwtest(mod_aroma1, alternative = "two.sided")
+dwtest(mod_aroma2, alternative = "two.sided")
+
+tsi <- rstudent(mod_aroma3);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(mod_aroma3, alternative = "two.sided")
 
 tsi <- rstudent(mod_aroma4);a <- max(tsi);b <- min(tsi)
 plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
@@ -284,13 +318,13 @@ summary(mod_sabor) # rse = 1.271 r2 = 0.62
 mod_sabor1 <- lm(log(qualidade) ~ sabor, data = wine)
 summary(mod_sabor1) #rse = 0.1094 r2 = 0.6062
 
-mod_sabor2 <- lm(qualidade ~ log(sabor), data = wine)
+mod_sabor2 <- lm(sqrt(qualidade) ~ sabor, data = wine)
 summary(mod_sabor2) # rse = 1.292 r2 = 0.6116
 
 mod_sabor3 <- lm(log(qualidade) ~ log(sabor), data = wine)
 summary(mod_sabor3) # rse =0.109 r2 = 0.6089
 
-mod_sabor4 <- lm(sqrt(qualidade) ~ sabor, data = wine)
+mod_sabor4 <- lm(qualidade ~ log(sabor), data = wine)
 summary(mod_sabor4) # rse = 0.1852 r2 = 0.6168 
 
 par(mfrow = c(2, 3))
@@ -300,3 +334,156 @@ plot(sabor, log(qualidade), pch = 16)
 plot(log(sabor), qualidade, pch = 16) #
 plot(log(sabor), log(qualidade), pch = 16)
 plot(sabor, sqrt(qualidade), pch = 16) #
+
+envelope_LR(mod_sabor,  main.title = "") 
+qqPlot(mod_sabor)
+
+envelope_LR(mod_sabor1,  main.title = "") 
+qqPlot(mod_sabor1)
+
+envelope_LR(mod_sabor2,  main.title = "") 
+qqPlot(mod_sabor2)
+
+envelope_LR(mod_sabor3,  main.title = "") 
+qqPlot(mod_sabor3)
+
+envelope_LR(mod_sabor4,  main.title = "") 
+qqPlot(mod_sabor4)
+
+tsi <- rstudent(mod_sabor);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_sabor),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_sabor),tsi)
+
+gqtest(mod_sabor, fraction=1/3, order.by=model.frame(mod_sabor)$sabor, alternative="two.sided")
+
+tsi <- rstudent(mod_sabor1);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_sabor1),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_sabor1),tsi)
+
+gqtest(mod_sabor1, fraction=1/3, order.by=model.frame(mod_sabor1)$sabor, alternative="two.sided")
+
+tsi <- rstudent(mod_sabor2);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_sabor2),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_sabor2),tsi)
+
+gqtest(mod_sabor2, fraction=1/3, order.by=model.frame(mod_sabor2)$sabor, alternative="two.sided")
+
+tsi <- rstudent(mod_sabor3);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_sabor3),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_sabor3),tsi)
+
+gqtest(mod_sabor3, fraction=1/3, order.by=model.frame(mod_sabor3)$sabor, alternative="two.sided")
+
+tsi <- rstudent(mod_sabor4);a <- max(tsi);b <- min(tsi)
+plot(fitted(mod_sabor4),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_sabor4),tsi)
+
+gqtest(mod_sabor4, fraction=1/3, order.by=model.frame(mod_sabor4)$sabor, alternative="two.sided")
+
+tsi <- rstudent(mod_sabor);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(mod_sabor, alternative = "two.sided")
+
+tsi <- rstudent(mod_sabor1);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(mod_sabor1, alternative = "two.sided")
+
+tsi <- rstudent(mod_sabor2);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(mod_sabor2, alternative = "two.sided")
+
+tsi <- rstudent(mod_sabor3);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(mod_sabor3, alternative = "two.sided")
+
+tsi <- rstudent(mod_sabor4);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(mod_sabor4, alternative = "two.sided")
+
+library(MASS)
+
+boxlife <- boxcox(mod_sabor, plotit = TRUE)
+lambda1 <- boxlife$x[which.max(boxlife$y)]
+lambda1
+wine$qualidade_boxcox <- ((wine$qualidade ^ lambda1) - 1) / lambda1
+
+modelo_boxcox <- lm(qualidade_boxcox ~ sabor, data = wine)
+summary(modelo_boxcox)
+
+tsi <- rstudent(modelo_boxcox);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(modelo_boxcox, alternative = "two.sided")
+
+boxlife <- boxcox(mod_aroma, plotit = TRUE)
+lambda1 <- boxlife$x[which.max(boxlife$y)]
+lambda1
+wine$qualidade_boxcox <- ((wine$qualidade ^ lambda1) - 1) / lambda1
+
+modelo_boxcox <- lm(qualidade_boxcox ~ aroma, data = wine)
+summary(modelo_boxcox)
+
+tsi <- rstudent(modelo_boxcox);a <- max(tsi);b <- min(tsi)
+plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(tsi)
+
+dwtest(modelo_boxcox, alternative = "two.sided")
+
+envelope_LR(modelo_boxcox,  main.title = "") 
+qqPlot(modelo_boxcox)
+
+tsi <- rstudent(modelo_boxcox);a <- max(tsi);b <- min(tsi)
+plot(fitted(modelo_boxcox),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+abline(h = c(-3, -2, 0, 2, 3),
+       col = c("darkred", "red", "blue", "red", "darkred"),
+       lty = c(3, 2, 2, 2, 3))
+identify(fitted(mod_sabor4),tsi)
+
+gqtest(modelo_boxcox, fraction=1/3, order.by=model.frame(modelo_boxcox)$aroma, alternative="two.sided")

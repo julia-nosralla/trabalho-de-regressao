@@ -475,6 +475,8 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   
   envelope_LR(mod_aroma1, main.title = "")
   
+  envelope_LR(mod_aroma2, main.title = "")
+  
   qqPlot(mod_aroma,
          xlab = "Quantis teóricos",
          ylab = "Resíduos studentizados")
@@ -482,10 +484,15 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   qqPlot(mod_aroma1,
          xlab = "Quantis teóricos",
          ylab = "Resíduos studentizados")
+  
+  qqPlot(mod_aroma2,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
 
   # Teste de Normalidade
   shapiro.test(rstudent(mod_aroma))
   shapiro.test(rstudent(mod_aroma1))
+  shapiro.test(rstudent(mod_aroma2))
   
   # corpo
   envelope_LR(mod_corpo, main.title = "")
@@ -504,6 +511,8 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   
   envelope_LR(mod_sabor2, main.title = "")
   
+  envelope_LR(mod_sabor3)
+  
   qqPlot(mod_sabor,
          xlab = "Quantis teóricos",
          ylab = "Resíduos studentizados")
@@ -513,6 +522,10 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
          ylab = "Resíduos studentizados")
   
   qqPlot(mod_sabor2,
+         xlab = "Quantis teóricos",
+         ylab = "Resíduos studentizados")
+  
+  qqPlot(mod_sabor3,
          xlab = "Quantis teóricos",
          ylab = "Resíduos studentizados")
   
@@ -562,6 +575,15 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   # Teste de homocedasticidade 
   gqtest(mod_aroma1, fraction=1/3, order.by=model.frame(mod_aroma1)$aroma, alternative="two.sided")
   
+  tsi <- rstudent(mod_aroma2);a <- max(tsi);b <- min(tsi)
+  plot(fitted(mod_aroma2),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  identify(fitted(mod_aroma1),tsi) # 20, 30
+  # Teste de homocedasticidade 
+  gqtest(mod_aroma2, fraction=1/3, order.by=model.frame(mod_aroma2)$aroma, alternative="two.sided")
+  
   # corpo
   
   tsi <- rstudent(mod_corpo);a <- max(tsi);b <- min(tsi)
@@ -603,6 +625,14 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   # Teste de homocedasticidade 
   gqtest(mod_sabor2, fraction=1/3, order.by=model.frame(mod_sabor2)$sabor, alternative="two.sided")
   
+  tsi <- rstudent(mod_sabor3);a <- max(tsi);b <- min(tsi)
+  plot(fitted(mod_sabor3),tsi,xlab="Valor Ajustado",ylab="Resíduo Studentizado", ylim=c(b-1,a+1), pch=16)
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de homocedasticidade 
+  gqtest(mod_sabor3, fraction=1/3, order.by=model.frame(mod_sabor3)$sabor, alternative="two.sided")
+  
   bptest(mod_aroma)
   bptest(mod_aroma1)
   bptest(mod_corpo)
@@ -636,6 +666,14 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(0,0,lty=2, col="blue",lwd=2)
   # Teste de não correlação    
   dwtest(mod_aroma1, alternative = "two.sided")  
+  
+  tsi <- rstudent(mod_aroma2);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_aroma2, alternative = "two.sided") 
 
   # corpo
   
@@ -671,7 +709,16 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   abline(2,0,lty=2, col="red", lwd=2)
   abline(0,0,lty=2, col="blue",lwd=2)
   # Teste de não correlação    
-  dwtest(mod_sabor2, alternative = "two.sided")  
+  dwtest(mod_sabor2, alternative = "two.sided") 
+  
+  tsi <- rstudent(mod_sabor3);a <- max(tsi);b <- min(tsi)
+  plot(tsi, pch=16, xlab="Índice", ylab="Resíduo Studentizado",ylim=c(b-1,a+1))
+  abline(-2,0,lty=2, col="red", lwd=2)
+  abline(2,0,lty=2, col="red", lwd=2)
+  abline(0,0,lty=2, col="blue",lwd=2)
+  # Teste de não correlação    
+  dwtest(mod_sabor3, alternative = "two.sided") 
+  
   
   # alavancagem
   
@@ -685,6 +732,16 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   
   identify(lm.influence(mod_aroma1)$hat)
   
+  # aroma 2
+  
+  plot(lm.influence(mod_aroma2)$hat, pch=16, xlab="Índice", ylab="Medida h", ylim=c(0,0.22))
+  abline(4/length(aroma),0,lty=2, col="blue", lwd=2)
+  abline(6/length(aroma),0,lty=2, col="red", lwd=2)
+  legend(34,0.22,"4/n",col="blue",lty=2,lwd=2,bty="n")
+  legend(34,0.21,"6/n",col="red",lty=2,lwd=2,bty="n")
+  
+  identify(lm.influence(mod_aroma2)$hat)
+  
   # corpo
   
   plot(lm.influence(mod_corpo)$hat, pch=16, xlab="Índice", ylab="Medida h", ylim=c(0,0.22))
@@ -697,6 +754,29 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   
   
   # Influência -------------------------------------------------
+  # aroma1 ----
+  n <- length(aroma)
+  
+  # Distâncias de Cook
+  plot(cooks.distance(mod_aroma1), pch=16, xlab="índice", ylab="Distância de Cook")
+  abline(4/n,0,lty=2,lwd=2, col="blue")
+  identify(cooks.distance(mod_aroma1)) # 20
+  
+  # DFFITS
+  plot(abs(dffits(mod_aroma1)), pch=16, xlab="índice", ylab="DFFITS")
+  abline(2*sqrt(2/n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dffits(mod_aroma1))) 
+  
+  # DFBETAS - Intercepto
+  plot(abs(dfbetas(mod_aroma1)[,1]), pch=16, xlab="índice", ylab="DFBETAS - intercepto")
+  abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dfbetas(mod_aroma1)[,1])) 
+  
+  # DFBETAS - Coeficiente ang.
+  plot(abs(dfbetas(mod_aroma1)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coef. angular")
+  abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
+  identify(abs(dfbetas(mod_aroma1)[,2])) 
+  
   # aroma1 ----
   n <- length(aroma)
   
@@ -743,4 +823,60 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   plot(abs(dfbetas(mod_corpo)[,2]), pch=16, xlab="índice", ylab="DFBETAS - Coeficiente ang.")
   abline(2/sqrt(n),0,lty=2,lwd=2, col="blue")
   identify(abs(dfbetas(mod_corpo)[,2])) 
+  
+  # investigação dos pontos atípicos
+  
+  MR <- function(a,b) cat("Mudança relativa = ", round(as.numeric((b/a-1)*100),2), "%","\n")
+  
+  # aroma1 ------
+  summary(mod_aroma1)
+  aroma1_sem12 <- lm(log(qualidade) ~ aroma, subset = -c(12)); summary(aroma1_sem12)
+  MR(coef(mod_aroma1), coef(aroma1_sem12))
+  
+  aroma1_sem14 <- lm(log(qualidade) ~ aroma, subset = -c(14)); summary(aroma1_sem14)
+  MR(coef(mod_aroma1), coef(aroma1_sem14))
+  
+  aroma1_sem15 <- lm(log(qualidade) ~ aroma, subset = -c(15)); summary(aroma1_sem15)
+  MR(coef(mod_aroma1), coef(aroma1_sem15))
+  
+  aroma1_sem20 <- lm(log(qualidade) ~ aroma, subset = -c(20)); summary(aroma1_sem20)
+  MR(coef(mod_aroma1), coef(aroma1_sem20))
+  
+  aroma1_sem30 <- lm(log(qualidade) ~ aroma, subset = -c(30)); summary(aroma1_sem30)
+  MR(coef(mod_aroma1), coef(aroma1_sem30))
+  
+  aroma1_sem33 <- lm(log(qualidade) ~ aroma, subset = -c(33)); summary(aroma1_sem33)
+  MR(coef(mod_aroma1), coef(aroma1_sem33))
+  
+  aroma1_sem34 <- lm(log(qualidade) ~ aroma, subset = -c(34)); summary(aroma1_sem34)
+  MR(coef(mod_aroma1), coef(aroma1_sem34))
+  
+  aroma1_sem_todos <- lm(log(qualidade) ~ aroma, subset = -c(12, 14, 15, 20, 30, 33, 34)); summary(aroma1_sem_todos)
+  MR(coef(mod_aroma1), coef(aroma1_sem_todos))
+  
+  # corpo ------
+  summary(mod_corpo)
+  corpo_sem1 <- lm(qualidade ~ corpo, subset = -c(1)); summary(corpo_sem1)
+  MR(coef(mod_corpo), coef(corpo_sem1))
+  
+  corpo_sem4 <- lm(qualidade ~ corpo, subset = -c(4)); summary(corpo_sem4)
+  MR(coef(mod_corpo), coef(corpo_sem4))
+  
+  corpo_sem14 <- lm(qualidade ~ corpo, subset = -c(14)); summary(corpo_sem14)
+  MR(coef(mod_corpo), coef(corpo_sem14))
+  
+  corpo_sem15 <- lm(qualidade ~ corpo, subset = -c(15)); summary(corpo_sem15)
+  MR(coef(mod_corpo), coef(corpo_sem15))
+  
+  corpo_sem20 <- lm(qualidade ~ corpo, subset = -c(20)); summary(corpo_sem20)
+  MR(coef(mod_corpo), coef(corpo_sem20))
+  
+  corpo_sem30 <- lm(qualidade ~ corpo, subset = -c(30)); summary(corpo_sem30)
+  MR(coef(mod_corpo), coef(corpo_sem30))
+  
+  corpo_sem37 <- lm(qualidade ~ corpo, subset = -c(37)); summary(corpo_sem37)
+  MR(coef(mod_corpo), coef(corpo_sem37))
+  
+  corpo_sem_todos <- lm(qualidade ~ corpo, subset = -c(1, 4, 14, 15, 20, 30, 37)); summary(corpo_sem_todos)
+  MR(coef(mod_corpo), coef(corpo_sem_todos))
   
