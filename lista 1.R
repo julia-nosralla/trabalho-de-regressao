@@ -62,6 +62,37 @@ meu_tema = theme_minimal() +
 
 ## Análise Descritiva das Variáveis ----------------------------------------------------------------------------
 
+# qualidade --------------------------------------------------------------------
+summary(wine$qualidade)
+cat("Desvio padrão:", sd(wine$qualidade, na.rm = TRUE), "\n")
+cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
+
+# Histograma
+ggplot(wine) +
+  aes(x = qualidade) +
+  geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
+  labs(
+    x = "Qualidade", 
+    y = "Frequência Absoluta",
+    title = "Histograma da variável qualidade"
+  ) +
+  theme_estat()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(wine) +
+  aes(x = factor(""), y = qualidade) +
+  geom_boxplot(fill = "#51A5C5", width = 0.3) + 
+  guides(fill = FALSE) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+  labs(
+    x = "", 
+    y = "Qualidade"
+  ) +
+  theme_estat() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggsave("graficos/box_qualidade.pdf", width = 158, height = 93, units = "mm")
+
 # claridade --------------------------------------------------------------------
     summary(wine$claridade)
     cat("Desvio padrão:", sd(wine$claridade, na.rm = TRUE), "\n")
@@ -287,36 +318,6 @@ meu_tema = theme_minimal() +
     ggsave("graficos/disp_aromac.pdf", width = 158, height = 93, units = "mm")
     
     
-# qualidade --------------------------------------------------------------------
-summary(wine$qualidade)
-cat("Desvio padrão:", sd(wine$qualidade, na.rm = TRUE), "\n")
-cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
-    
-    # Histograma
-    ggplot(wine) +
-      aes(x = qualidade) +
-      geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
-      labs(
-        x = "Qualidade", 
-        y = "Frequência Absoluta",
-        title = "Histograma da variável qualidade"
-      ) +
-      theme_estat()+
-      theme(plot.title = element_text(hjust = 0.5))
-    
-    ggplot(wine) +
-      aes(x = factor(""), y = qualidade) +
-      geom_boxplot(fill = "#51A5C5", width = 0.3) + 
-      guides(fill = FALSE) +
-      stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
-      labs(
-        x = "", 
-        y = "Qualidade"
-      ) +
-      theme_estat() +
-      theme(plot.title = element_text(hjust = 0.5))
-    
-    ggsave("graficos/box_qualidade.pdf", width = 158, height = 93, units = "mm")
 
 ## Gráficos de dispersao da variável de interesse com cada covariável -------------------------------------------
     
@@ -879,4 +880,8 @@ cat("Valores ausentes:", sum(is.na(wine$qualidade)), "\n")
   
   corpo_sem_todos <- lm(qualidade ~ corpo, subset = -c(1, 4, 14, 15, 20, 30, 37)); summary(corpo_sem_todos)
   MR(coef(mod_corpo), coef(corpo_sem_todos))
+  
+  # intervalo de confiança
+  
+  confint(mod_aroma1, level = 0.95)
   

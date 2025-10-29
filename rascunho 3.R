@@ -115,6 +115,8 @@ abline(h = c(-3, -2, 0, 2, 3),
        col = c("darkred", "red", "blue", "red", "darkred"),
        lty = c(3, 2, 2, 2, 3))
 identify(tsi)
+dwtest(mod_aroma1, alternative = "two.sided")
+
 # observações 20 e 30 abaixo de -2
 
 tsi <- rstudent(mod_aroma2);a <- max(tsi);b <- min(tsi)
@@ -346,6 +348,7 @@ qqPlot(mod_sabor2)
 
 envelope_LR(mod_sabor3,  main.title = "") 
 qqPlot(mod_sabor3)
+shapiro.test(rstudent(mod_sabor3))
 
 envelope_LR(mod_sabor4,  main.title = "") 
 qqPlot(mod_sabor4)
