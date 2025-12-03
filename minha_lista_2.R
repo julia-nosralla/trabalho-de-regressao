@@ -61,9 +61,9 @@ meu_tema = theme_minimal() +
    aes(x = BigMac) +
     geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
     labs(
-     x = "BigMac", 
+     x = "Big Mac", 
      y = "Frequência Absoluta",
-     title = "Histograma da variável BigMac"
+     title = "Histograma da variável Big Mac"
     ) +
     theme_estat()+
     theme(plot.title = element_text(hjust = 0.5))
@@ -76,7 +76,7 @@ meu_tema = theme_minimal() +
     stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
     labs(
       x = "", 
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     theme_estat() +
     theme(plot.title = element_text(hjust = 0.5))
@@ -121,7 +121,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Bread",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
@@ -165,7 +165,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Rice",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
@@ -181,9 +181,9 @@ meu_tema = theme_minimal() +
     aes(x = FoodIndex) +
     geom_histogram(colour = "white", fill = "#51A5C5", binwidth = 1) +
     labs(
-      x = "FoodIndex", 
+      x = "Food Index", 
       y = "Frequência Absoluta",
-      title = "Histograma da variável FoodIndex"
+      title = "Histograma da variável Food Index"
     ) +
     theme_estat()+
     theme(plot.title = element_text(hjust = 0.5))
@@ -196,7 +196,7 @@ meu_tema = theme_minimal() +
     stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
     labs(
       x = "", 
-      y = "FoodIndex"
+      y = "Food Index"
     ) +
     theme_estat() +
     theme(plot.title = element_text(hjust = 0.5))
@@ -208,8 +208,8 @@ meu_tema = theme_minimal() +
     geom_point(shape = 16, size = 2) +                     
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
-      x = "FoodIndex",
-      y = "BigMac"
+      x = "Food Index",
+      y = "Big Mac"
     ) +
     meu_tema
   

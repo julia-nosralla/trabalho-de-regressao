@@ -133,9 +133,11 @@ ggplot(wine, aes(x = corpo, y = log(qualidade))) +
   geom_smooth(method = "lm", se = FALSE, color = "#1F77B4") +
   labs(
     x = "Corpo",
-    y = "log(Qualidade)"
+    y = "Log(qualidade)"
   ) +
   meu_tema
+
+ggsave("graficos/disp_corpo1.pdf", width = 158, height = 93, units = "mm")
 
 # log explicativa
 
