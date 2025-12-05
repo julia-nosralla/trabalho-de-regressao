@@ -171,7 +171,7 @@ meu_tema = theme_minimal() +
   
   ggsave("graficos2/disp_rice.pdf", width = 158, height = 93, units = "mm") 
   
-# FOodIndex --------------------------------------------------------------------
+# FoodIndex --------------------------------------------------------------------
   summary(BigMac2003$FoodIndex)
   cat("Desvio padrão:", sd(BigMac2003$FoodIndex, na.rm = TRUE), "\n")
   cat("Valores ausentes:", sum(is.na(BigMac2003$FoodIndex)), "\n")
@@ -254,7 +254,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Bus",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
@@ -299,7 +299,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Apt",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
@@ -345,7 +345,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Teach GI",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
@@ -390,7 +390,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Teach NI",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
@@ -435,7 +435,7 @@ meu_tema = theme_minimal() +
     geom_smooth(method = "lm", se = FALSE, color = "#51A5C5") +
     labs(
       x = "Tax Rate",
-      y = "BigMac"
+      y = "Big Mac"
     ) +
     meu_tema
   
